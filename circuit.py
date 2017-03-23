@@ -202,24 +202,24 @@ class Circuit:
 	    for i in range(N-1):
 		    if(self.node_array[i].right_array):
 		    	for j in self.node_array[i].right_array
-			    	G[i][i]=G[i][i]+1/self.el_array[j].value;
+			    	G[i][i]=G[i][i]+1/self.el_array[j].value
 		    if(self.node_array[i].left_array):
 		    	for j in self.node_array[i].left_array
-		    		G[i][i]=G[i][i]+1/self.el_array[j].value;
+		    		G[i][i]=G[i][i]+1/self.el_array[j].value
 		    if(self.node_array[i].mid_array):
 			    for j in self.node_array[i].mid_array
-			    	G[i][i]=G[i][i]+1/self.el_array[j].value;
+			    	G[i][i]=G[i][i]+1/self.el_array[j].value
 	     # заполняем матрицу проводимойстей до конца
 	    for i in range(N-1):
 		    if(self.node_array[i].right_array):
 		    	for j in self.node_array[i].right_array
-		    		G[i][self.node_array[i].right.key]=G[i][self.node_array[i].right.key]-1/self.el_array[j].value;
+		    		G[i][self.node_array[i].right.key]=G[i][self.node_array[i].right.key]-1/self.el_array[j].value
 		    if(self.node_array[i].left_array):
 			    for j in self.node_array[i].left_array
-				    G[i][self.node_array[i].left.key]=G[i][self.node_array[i].left.key]-1/self.el_array[j].value;			
+				    G[i][self.node_array[i].left.key]=G[i][self.node_array[i].left.key]-1/self.el_array[j].value			
 		    if(self.node_array[i].right_array):
 			    for j in self.node_array[i].right_array
-			    	G[i][self.node_array[i].right.key]=G[i][self.node_array[i].right.key]-1/self.el_array[j].value;	
+			    	G[i][self.node_array[i].right.key]=G[i][self.node_array[i].right.key]-1/self.el_array[j].value;
 	     # заполняем матрицу токов
 	    for i in self.el_array
 		    if i.el_type.find('I')
@@ -227,13 +227,13 @@ class Circuit:
 			    I[i.amperage.from_this]=I[i.amperage.from_this]-i.amperage.function
 		    if i.el_type.find('U') #Если у нас есть источник токов, то соответствующию строку в матрице проводимостей переводим в единичную, а соответсвующее значение матрицы токов приравниваем напряжению
 			    for j in range(N-1)
-			    	G[i.voltage.plus][j]=0;
-			    	G[i.voltage.minus][j]=0;
+			    	G[i.voltage.plus][j]=0
+			    	G[i.voltage.minus][j]=0
 			    if (i.voltage.plus<N-1)
-				    G[i.voltage.plus][i.voltage.plus]=1;
-				    I[i.voltage.plus]=i.voltage.function;
+				    G[i.voltage.plus][i.voltage.plus]=1
+				    I[i.voltage.plus]=i.voltage.function
 			    if (i.voltage.minus<N-1)
 			    	G[i.voltage.minus][i.voltage.minus]=1;
-				    I[i.voltage.minus]=-1*i.voltage.function;
-	    V=inv(G)*I; #получаем вектор узловых напряжений.
+				    I[i.voltage.minus]=-1*i.voltage.function
+	    V=inv(G)*I #получаем вектор узловых напряжений.
 	    return (V[elem.from_]-V[elem.to_]) #возвращаем разницу узловых напряжений на элементе, то есть его напряжение.
