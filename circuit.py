@@ -1,3 +1,6 @@
+from numpy.linalg import inv
+import numpy as np
+
 class Voltage:
     def __init__(self, function, plus, minus):
         # Пока-что будем считать сигнал постоянным
@@ -232,5 +235,5 @@ class Circuit:
 			    if (i.voltage.minus<N-1)
 			    	G[i.voltage.minus][i.voltage.minus]=1;
 				    I[i.voltage.minus]=-1*i.voltage.function;
-	    V=inv(G)*I;
-	    return (V[elem.from_]-V[elem.to_])
+	    V=inv(G)*I; #получаем вектор узловых напряжений.
+	    return (V[elem.from_]-V[elem.to_]) #возвращаем разницу узловых напряжений на элементе, то есть его напряжение.
