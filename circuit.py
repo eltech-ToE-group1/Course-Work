@@ -198,14 +198,14 @@ class Circuit:
         self.el_array = el_array
 
 
-    def MUN(self,elem): #подается элемент
+    def MUN(self,elem): # На вход подаётся элемент 
         N=self.node_array.shape
-        # задаем матрицы проводимойстей и токов
+        # Задаем матрицы проводимойстей и токов
         G = [0] * (N-1)
         I = [0] * (N-1)
         for i in range(N-1):
             G[i] = [0] * (N-1)
-        # заполняем собсвенные проводимости узлов
+        # Заполняем собсвенные проводимости узлов
         for i in range(N-1):
             if(self.node_array[i].right_array):
                 for j in self.node_array[i].right_array:
@@ -216,7 +216,7 @@ class Circuit:
             if(self.node_array[i].mid_array):
                 for j in self.node_array[i].mid_array:
                     G[i][i]=G[i][i]+1/self.el_array[j].value
-        # заполняем матрицу проводимойстей до конца
+        # Заполняем матрицу проводимойстей до конца
         for i in range(N-1):
             if(self.node_array[i].right_array):
                 for j in self.node_array[i].right_array:
@@ -227,12 +227,12 @@ class Circuit:
             if(self.node_array[i].right_array):
                 for j in self.node_array[i].right_array:
                     G[i][self.node_array[i].right.key]=G[i][self.node_array[i].right.key]-1/self.el_array[j].value
-        # заполняем матрицу токов
+        # Заполняем матрицу токов
         for i in self.el_array:
             if i.el_type.find('I'):
                 I[i.amperage.to_this]=I[i.amperage.to_this]+i.amperage.function
                 I[i.amperage.from_this]=I[i.amperage.from_this]-i.amperage.function
-            if i.el_type.find('U'): # Если у нас есть источник токов, то соответствующию строку в матрице проводимостей переводим в единичную, а соответсвующее значение матрицы токов приравниваем напряжению
+            if i.el_type.find('U'): # Если у нас есть ИН, то соответствующию строку в матрице проводимостей переводим в единичную, а соответсвующее значение матрицы токов приравниваем напряжению
                 for j in range(N-1):
                     G[i.voltage.plus][j]=0
                     G[i.voltage.minus][j]=0
