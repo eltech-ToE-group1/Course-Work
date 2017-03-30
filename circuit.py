@@ -139,8 +139,8 @@ class Element:
             self._to_= to_
 
 class Node:
-    def __init__(self, key):
-        # Связанные с данным узлы, если левый или правый и средний совпадают, это обозначает край цепи
+    def __init__(self):
+        # Связанные с данным узлы, на краю цепи левый или правый остаються None
         self.left = None
         self.right = None
         self.mid = None
