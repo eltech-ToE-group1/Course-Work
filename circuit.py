@@ -83,7 +83,7 @@ class Element:
         # Хранит в себе соответствующие значение для L, R, C элементов
         self.value = value
         # Обязательно определять для ИТ и ИН силу тока и напряжение соответственно
-        # Для остальных типов желательно приравнимать к None
+        # Для остальных типов приравнимать function к None и хранить только направления
         self.amperage = amperage
         self.voltage = voltage
         # Хранить направление тока, если сила тока неизвестна
@@ -122,21 +122,6 @@ class Element:
         def voltage(self, voltage):
             self._voltage = voltage
 
-        @property
-        def from_self(self):
-            return self._from_
-
-        @from_.setter
-        def from_(self, from_):
-            self._from_ = from_
-
-        @property
-        def to_(self):
-            return self._to_
-
-        @to_.setter
-        def to_(self, to_):
-            self._to_= to_
 
 class Node:
     def __init__(self):
@@ -243,4 +228,4 @@ class Circuit:
                     G[i.voltage.minus][i.voltage.minus]=1
                     I[i.voltage.minus]=-1*i.voltage.function
         V=inv(G)*I #получаем вектор узловых напряжений.
-        return (V[elem.from_]-V[elem.to_]) #возвращаем разницу узловых напряжений на элементе, то есть его напряжение.
+        return (V[elem.voltage.plus]-V[elem.voltage.minus]) #возвращаем разницу узловых напряжений на элементе, то есть его напряжение.
