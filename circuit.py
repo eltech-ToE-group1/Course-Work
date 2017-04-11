@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Apr  9 17:13:37 2017
+
+@author: Дудко Кирилл
+"""
+
 from numpy.linalg import inv
 import numpy as np
 
@@ -69,7 +76,7 @@ class Amperage:
             self._to_this = to_this
 
 class Element:
-    def __init__(self, el_type, value, amperage, voltage, from_, to_ ):
+    def __init__(self, key , el_type, value, amperage, voltage, from_, to_ ):
         # R - резистор
         # L - катушка
         # C - конденсатор
@@ -80,12 +87,20 @@ class Element:
         # el_type имеет тип строки
 
         self.el_type = el_type
+        # Хранит в себе номер элемента
+        self.key = key
         # Хранит в себе соответствующие значение для L, R, C элементов
         self.value = value
         # Обязательно определять для ИТ и ИН силу тока и напряжение соответственно
         # Для остальных типов приравнимать function к None и хранить только направления
-        self.amperage = amperage
-        self.voltage = voltage
+        if(amperage):
+            self.amperage = Amperage(amperage,from_,to_)
+        else:
+            self.amperage=None
+        if(voltage):
+            self.voltage = Voltage(voltage,to_,from_)
+        else:
+            self.voltage = None
         # Хранить направление тока, если сила тока неизвестна
         self.from_=from_
         self.to_=to_
@@ -124,15 +139,11 @@ class Element:
 
 
 class Node:
-    def __init__(self):
-        # Связанные с данным узлы, на краю цепи левый или правый остаються None
-        self.left = None
-        self.right = None
-        self.mid = None
-        # Массивы содержащии ключи элементов между данным узлом и правым, левым, средним соответственно
-        self.right_array = None
-        self.left_array = None
-        self.mid_array = None
+    def __init__(self,key):
+        # Массивы содержащии ключи элементов 
+        self.To = None
+        self.From = None
+        self.key = key
 
         @property
         def left(self):
@@ -177,55 +188,129 @@ class Node:
 
 class Circuit:
     def __init__(self, node_array, el_array):
-        # Массив узлов (номер в массиве являеться ключем)
+        # Массив узлов (номер в массиве является ключем)
         self.node_array = node_array
-        # Массив элементов (номер в массиве являеться ключем)
+        # Массив элементов (номер в массиве является ключем)
         self.el_array = el_array
+        for i in el_array:
+            if(node_array[i.from_].To):
+                node_array[i.from_].To.append(i.key)
+            else:
+                node_array[i.from_].To=[i.key]
+            if(node_array[i.to_].From):
+                node_array[i.to_].From.append(i.key)
+            else:
+                node_array[i.to_].From=[i.key]
+            
+
+    def NORMALIZE(self):
+        for i in self.el_array:
+            if i.el_type.find('SC'):
+                self.node_array[i.from_].To.extend(self.node_array[i.to_].To)
+                self.node_array[i.from_].From.extend(self.node_array[i.to_].From)
+                self.node_array[i.from_].el_To.extend(self.node_array[i.to_].el_To)
+                self.node_array[i.from_].el_From.extend(self.node_array[i.to_].el_From)
+                self.node_array.pop([i.to_])
+                i.el_type='N'
+                self.el_array.remove(i)
+            #if i.el_type.find('NL'):
+                
+               
 
 
     def MUN(self,elem): # На вход подаётся элемент 
-        N=self.node_array.shape
+        #self.NORMILIZE #-когда будет готов ХХ убрать коммент
+        N=0
+        for i in self.node_array:
+            N=N+1
         # Задаем матрицы проводимойстей и токов
-        G = [0] * (N-1)
-        I = [0] * (N-1)
-        for i in range(N-1):
-            G[i] = [0] * (N-1)
-        # Заполняем собсвенные проводимости узлов
-        for i in range(N-1):
-            if(self.node_array[i].right_array):
-                for j in self.node_array[i].right_array:
-                    G[i][i]=G[i][i]+1/self.el_array[j].value
-            if(self.node_array[i].left_array):
-                for j in self.node_array[i].left_array:
-                    G[i][i]=G[i][i]+1/self.el_array[j].value
-            if(self.node_array[i].mid_array):
-                for j in self.node_array[i].mid_array:
-                    G[i][i]=G[i][i]+1/self.el_array[j].value
+        print(N)
+        Basic=0
+        G=np.zeros((N,N))
+        I=np.zeros((N))
+        # Находим базовый узел
+        for i in self.el_array:
+            if (i.el_type.find('U')!=-1):
+                Basic=i.from_
+        # Заполняем собственные проводимости узлов
+        for i in range(N):
+            if(i!=Basic):
+                if(self.node_array[i].To):
+                    for j in self.node_array[i].To:
+                        G[i][i]=G[i][i]+1/self.el_array[j].value
+                if(self.node_array[i].From):
+                    for j in self.node_array[i].From:
+                        G[i][i]=G[i][i]+1/self.el_array[j].value
         # Заполняем матрицу проводимойстей до конца
-        for i in range(N-1):
-            if(self.node_array[i].right_array):
-                for j in self.node_array[i].right_array:
-                    G[i][self.node_array[i].right.key]=G[i][self.node_array[i].right.key]-1/self.el_array[j].value
-            if(self.node_array[i].left_array):
-                for j in self.node_array[i].left_array:
-                    G[i][self.node_array[i].left.key]=G[i][self.node_array[i].left.key]-1/self.el_array[j].value
-            if(self.node_array[i].right_array):
-                for j in self.node_array[i].right_array:
-                    G[i][self.node_array[i].right.key]=G[i][self.node_array[i].right.key]-1/self.el_array[j].value
+        for i in range(N):
+            if(i!=Basic):
+                if(self.node_array[i].To):
+                    for j in self.node_array[i].To:
+                        if (self.el_array[j].el_type.find('R')!=-1):
+                            G[i][self.el_array[j].to_]=G[i][self.el_array[j].to_]-1/self.el_array[j].value
+                if(self.node_array[i].From):
+                    for j in self.node_array[i].From:
+                        if (self.el_array[j].el_type.find('R')!=-1):
+                            G[i][self.el_array[j].from_]=G[i][self.el_array[j].from_]-1/self.el_array[j].value
         # Заполняем матрицу токов
         for i in self.el_array:
-            if i.el_type.find('I'):
-                I[i.amperage.to_this]=I[i.amperage.to_this]+i.amperage.function
-                I[i.amperage.from_this]=I[i.amperage.from_this]-i.amperage.function
-            if i.el_type.find('U'): # Если у нас есть ИН, то соответствующию строку в матрице проводимостей переводим в единичную, а соответсвующее значение матрицы токов приравниваем напряжению
+            if (i.el_type.find('I')!=-1):
+                if(i.amperage.to_this!=Basic):
+                    I[i.amperage.to_this]=I[i.amperage.to_this]+i.amperage.function
+                if(i.amperage.from_this!=Basic):
+                    I[i.amperage.from_this]=I[i.amperage.from_this]-i.amperage.function
+            if (i.el_type.find('U')!=-1): # Если у нас есть ИН, то соответствующию строку в матрице проводимостей переводим в единичную, а соответсвующее значение матрицы токов приравниваем напряжению
                 for j in range(N-1):
-                    G[i.voltage.plus][j]=0
-                    G[i.voltage.minus][j]=0
-                if (i.voltage.plus<N-1):
-                    G[i.voltage.plus][i.voltage.plus]=1
-                    I[i.voltage.plus]=i.voltage.function
-                if (i.voltage.minus<N-1):
-                    G[i.voltage.minus][i.voltage.minus]=1
-                    I[i.voltage.minus]=-1*i.voltage.function
-        V=inv(G)*I #получаем вектор узловых напряжений.
-        return (V[elem.voltage.plus]-V[elem.voltage.minus]) #возвращаем разницу узловых напряжений на элементе, то есть его напряжение.
+                    G[i.to_][j]=0
+                    G[i.from_][j]=0
+                if (i.voltage.plus!=Basic):
+                    G[i.to_][i.voltage.plus]=1
+                    I[i.to_]=i.voltage.function
+                if (i.voltage.minus!=Basic):
+                    G[i.from_][i.voltage.minus]=1
+                    I[i.from_]=-1*i.voltage.function
+        #print(I)
+        N=N-1;
+        F=np.zeros((N,N))
+        k=0;
+        n=0;
+        for i in range(N):
+            if (i!=Basic):
+                if(i<Basic):
+                    k=i;
+                else:
+                    k=i-1
+            for j in range(N):
+                if (j!=Basic):
+                    if(j<Basic):
+                        n=j;
+                    else:
+                        n=j-1
+                    F[k][n]=G[i][j]
+        II=np.zeros((N))
+        for i in range(N):
+            if (i!=Basic):
+                if(i<Basic):
+                    k=i;
+                else:
+                    k=i+1
+                II[k]=I[i]
+        V=inv(F)*II #получаем вектор узловых напряжений.
+        V1=np.zeros(N+1)
+        for i in range(N+1):
+            if (i!=Basic):
+                if(i<Basic):
+                    k=i;
+                else:
+                    k=i+1
+                print(k,i,V[i])
+                V1[k]=V[i][0]
+        V1[Basic]=0;
+        return (V1[elem.from_]-V1[elem.to_]) #возвращаем разницу узловых напряжений на элементе, то есть его напряжение.
+
+
+#Зададим цепь
+node_array=[Node(0),Node(1),Node(2)]
+node_elem=[Element(0,"U",5,None,5,2,0),Element(1,"R",1,None,None,0,1),Element(2,"R",2,None,None,1,2),Element(3,"R",3,None,None,1,2)]
+circ=Circuit(node_array,node_elem)
+print(circ.MUN(node_elem[1]))
