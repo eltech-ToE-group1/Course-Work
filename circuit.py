@@ -8,6 +8,8 @@ Created on Sun Apr  9 17:13:37 2017
 from numpy.linalg import inv
 import numpy as np
 
+
+
 class Voltage:
     def __init__(self, function, plus, minus):
         # Пока-что будем считать сигнал постоянным
@@ -106,6 +108,15 @@ class Element:
         self.to_=to_
 
         @property
+        def key(self):
+            return self.key
+        
+        @key.setter
+        def key(self, key):
+            self.key  = key
+            
+            
+        @property
         def el_type(self):
             return self._el_type
 
@@ -117,7 +128,7 @@ class Element:
         def value (self):
             return self._value
 
-        @value .setter
+        @value.setter
         def value (self, value ):
             self._value  = value
 
@@ -136,8 +147,22 @@ class Element:
         @voltage.setter
         def voltage(self, voltage):
             self._voltage = voltage
+        @property    
+        def to_(self):
+            return self.to_
 
+        @to_.setter
+        def to_(self, To):
+            self.to_ = To
 
+        @property
+        def from_(self):
+            return self.from_
+
+        @from_.setter
+        def from_(self, from_):
+            self.from_  = from_      
+    
 class Node:
     def __init__(self,key):
         # Массивы содержащии ключи элементов 
@@ -146,45 +171,29 @@ class Node:
         self.key = key
 
         @property
-        def left(self):
-            return self._left
+        def To(self):
+            return self.To
 
-        @left.setter
-        def left(self, left):
-            self._left = left
-
-        @property
-        def right(self):
-            return self._right
-
-        @right .setter
-        def right(self, right):
-            self._right  = right
+        @To.setter
+        def To(self, To):
+            self.To = To
 
         @property
-        def mid(self):
-            return self._mid
+        def From(self):
+            return self.From
 
-        @mid.setter
-        def mid(self, mid):
-            self._mid = mid
-
-        @property
-        def right_array(self):
-            return self._right_array
-
-        @right_array.setter
-        def right_array(self, right_array):
-            self._right_array = right_array
+        @From.setter
+        def From(self, From):
+            self.From  = From
 
         @property
-        def mid_array(self):
-            return self._mid_array
-
-        @mid_array.setter
-        def mid_array(self, mid_array):
-            self._mid_array = mid_array
-
+        def key(self):
+            return self.key
+        
+        @key.setter
+        def key(self, key):
+            self.key  = key
+    
 
 class Circuit:
     def __init__(self, node_array, el_array):
@@ -202,18 +211,6 @@ class Circuit:
             else:
                 node_array[i.to_].From=[i.key]
             
-
-    def NORMALIZE(self):
-        for i in self.el_array:
-            if i.el_type.find('SC'):
-                self.node_array[i.from_].To.extend(self.node_array[i.to_].To)
-                self.node_array[i.from_].From.extend(self.node_array[i.to_].From)
-                self.node_array[i.from_].el_To.extend(self.node_array[i.to_].el_To)
-                self.node_array[i.from_].el_From.extend(self.node_array[i.to_].el_From)
-                self.node_array.pop([i.to_])
-                i.el_type='N'
-                self.el_array.remove(i)
-            #if i.el_type.find('NL'):
                 
                
 
@@ -224,23 +221,30 @@ class Circuit:
         for i in self.node_array:
             N=N+1
         # Задаем матрицы проводимойстей и токов
-        print(N)
         Basic=0
+        SC_TO=100
+        SC_FROM=100        
         G=np.zeros((N,N))
         I=np.zeros((N))
         # Находим базовый узел
         for i in self.el_array:
             if (i.el_type.find('U')!=-1):
                 Basic=i.from_
+        for i in self.el_array:
+            if (i.el_type.find('SC')!=-1):
+                SC_TO=i.to_
+                SC_FROM=i.from_
         # Заполняем собственные проводимости узлов
         for i in range(N):
             if(i!=Basic):
                 if(self.node_array[i].To):
                     for j in self.node_array[i].To:
-                        G[i][i]=G[i][i]+1/self.el_array[j].value
+                        if (self.el_array[j].el_type.find('R')!=-1):
+                            G[i][i]=G[i][i]+1/self.el_array[j].value
                 if(self.node_array[i].From):
                     for j in self.node_array[i].From:
-                        G[i][i]=G[i][i]+1/self.el_array[j].value
+                        if (self.el_array[j].el_type.find('R')!=-1):
+                            G[i][i]=G[i][i]+1/self.el_array[j].value
         # Заполняем матрицу проводимойстей до конца
         for i in range(N):
             if(i!=Basic):
@@ -270,47 +274,73 @@ class Circuit:
                     G[i.from_][i.voltage.minus]=1
                     I[i.from_]=-1*i.voltage.function
         #print(I)
-        N=N-1;
-        F=np.zeros((N,N))
+       # print(G)
+        G[SC_TO][SC_TO]=G[SC_TO][SC_TO]+G[SC_FROM][SC_FROM]+2*G[SC_TO][SC_FROM]
+        for i in range(N):
+            if (i!=SC_TO and i!=SC_FROM):
+                G[SC_TO][i]=G[SC_TO][i]+G[SC_FROM][i]
+                G[i][SC_TO]=G[i][SC_TO]+G[i][SC_FROM]
+        if(SC_TO==100):
+            N1=N-1;
+        else:
+            N1=N-2;
+        #print(G)
+        F=np.zeros((N1,N1))
         k=0;
         n=0;
         for i in range(N):
-            if (i!=Basic):
-                if(i<Basic):
+            if (i!=Basic and i!=SC_FROM):
+                if(i<Basic and i<SC_FROM):
                     k=i;
                 else:
-                    k=i-1
-            for j in range(N):
-                if (j!=Basic):
-                    if(j<Basic):
-                        n=j;
+                    if(i>Basic and i>SC_FROM):    
+                       k=i-2
                     else:
-                        n=j-1
-                    F[k][n]=G[i][j]
-        II=np.zeros((N))
+                       k=i-1;    
+                for j in range(N):
+                    if (j!=Basic and j!=SC_FROM):
+                        if(j<Basic and j<SC_FROM):
+                            n=j;
+                        else:
+                            if(j>Basic and j>SC_FROM):    
+                                n=j-2
+                            else:
+                                n=j-1; 
+                        #print(k,n,i,j)
+                        F[k][n]=G[i][j]
+        II=np.zeros((N1))
         for i in range(N):
-            if (i!=Basic):
-                if(i<Basic):
+            if (i!=Basic and i!=SC_FROM):
+                if(i<Basic and i<SC_FROM):
                     k=i;
                 else:
-                    k=i+1
+                    if(i>Basic and i>SC_FROM):    
+                       k=i-2
+                    else:
+                       k=i-1; 
                 II[k]=I[i]
         V=inv(F)*II #получаем вектор узловых напряжений.
-        V1=np.zeros(N+1)
-        for i in range(N+1):
-            if (i!=Basic):
-                if(i<Basic):
+        V1=np.zeros(N)
+        for i in range(N1):
+            if (1):
+                if(i<Basic and i<SC_FROM):
                     k=i;
                 else:
-                    k=i+1
-                print(k,i,V[i])
+                    if(i>=Basic and i>=SC_FROM):
+                        k=i+2
+                    else:
+                        k=i+1
                 V1[k]=V[i][0]
-        V1[Basic]=0;
+        V1[Basic]=0
+        V1[SC_FROM]=V1[SC_TO]
+        for i in self.el_array:
+            if(i.el_type.find('U')==-1):
+                i.voltage=V1[i.from_]-V1[elem.to_]
         return (V1[elem.from_]-V1[elem.to_]) #возвращаем разницу узловых напряжений на элементе, то есть его напряжение.
 
 
 #Зададим цепь
-node_array=[Node(0),Node(1),Node(2)]
-node_elem=[Element(0,"U",5,None,5,2,0),Element(1,"R",1,None,None,0,1),Element(2,"R",2,None,None,1,2),Element(3,"R",3,None,None,1,2)]
+node_array=[Node(0),Node(1),Node(2),Node(3),Node(4),Node(5)]
+node_elem=[Element(0,"U",5,None,5,5,0),Element(1,"R",2,None,None,0,1),Element(2,"R",2,None,None,1,2),Element(3,"R",3,None,None,2,3),Element(4,"SC",None,None,None,1,4),Element(5,"R",5,None,None,3,4),Element(6,"R",3,None,None,4,5)]
 circ=Circuit(node_array,node_elem)
 print(circ.MUN(node_elem[1]))
