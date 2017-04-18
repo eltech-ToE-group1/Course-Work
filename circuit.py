@@ -7,8 +7,7 @@ Created on Sun Apr  9 17:13:37 2017
 
 from numpy.linalg import inv
 import numpy as np
-
-
+import copy
 
 class Voltage:
     def __init__(self, function, plus, minus):
@@ -42,7 +41,6 @@ class Voltage:
         @minus.setter
         def minus(self, minus):
             self._minus = minus
-
 
 class Amperage:
     def __init__(self, function, from_this, to_this):
@@ -84,8 +82,8 @@ class Element:
         # C - конденсатор
         # U - ИН
         # I - ИТ
-        # NL - ХХ
         # SC - КЗ
+        # ХХ представляеться как ИТ с нулевым током
         # el_type имеет тип строки
 
         self.el_type = el_type
@@ -210,12 +208,56 @@ class Circuit:
                 node_array[i.to_].From.append(i.key)
             else:
                 node_array[i.to_].From=[i.key]
-            
-                
-               
+
+    # ищет элемент заданного типа, если он не замкнут на одном узле
+    def FindEl (self, eltype):
+        for i in range(len(self.el_array)):
+            if self.el_array[i].to_ != self.el_array[i].from_:
+                if self.el_array[i].el_type == eltype:
+                    return i
+        return -1
+
+    # Меняет направления в напряжении и токах элементов в соответствии с from_ и to_, а также заменяет ключи узлов на их номера в массиве и соответственно меняет from_ и to_
+    def Refresh(self):
+        for i in range(len(self.node_array)):
+            for j in self.node_array[i].From:
+                self.el_array[j].from_ = i
+            for j in self.node_array[i].To:
+                self.el_array[j].to_ = i
+            self.node_array[i].key = i
+        for i in self.el_array:
+            if (i.amperage):
+                i.amperage.from_this = i.from_
+                i.amperage.to_this = i.to_
+            if (i.voltage):
+                i.voltage.plus = i.to_
+                i.voltage.minus = i.from_
+
+    # На вход подаёться цепь и номера узлов, если между узлами КЗ, они объеденяються в один, функция возвращает цепь.
+    def NodeMerge(self):
+        new_circ = copy.deepcopy(self)
+        num = new_circ.FindEl('SC')
+        # Если КЗ нету
+        if not (num+1):
+            return new_circ
+        node1 = new_circ.el_array[num].from_
+        node2 = new_circ.el_array[num].to_
+        # Объеденяем массивы элементов
+        new_circ.node_array[node2].From.extend(self.node_array[node1].From)
+        new_circ.node_array[node2].To.extend(self.node_array[node1].To)
+        # Меняем направления в элементах
+        for i in new_circ.node_array[node2].From:
+            new_circ.el_array[i].from_ = node2
+        for i in new_circ.node_array[node2].To:
+            new_circ.el_array[i].to_ = node2
+        # Удаляем лишний узел
+        del new_circ.node_array[node1]
+        # Обновляем цепь
+        new_circ.Refresh()
+        return new_circ
 
 
-    def MUN(self,elem): # На вход подаётся элемент 
+    def MUN(self): # На вход подаётся элемент
         #self.NORMILIZE #-когда будет готов ХХ убрать коммент
         N=0
         for i in self.node_array:
@@ -281,52 +323,52 @@ class Circuit:
                 G[SC_TO][i]=G[SC_TO][i]+G[SC_FROM][i]
                 G[i][SC_TO]=G[i][SC_TO]+G[i][SC_FROM]
         if(SC_TO==100):
-            N1=N-1;
+            N1=N-1
         else:
-            N1=N-2;
+            N1=N-2
         #print(G)
         F=np.zeros((N1,N1))
-        k=0;
-        n=0;
+        k=0
+        n=0
         for i in range(N):
             if (i!=Basic and i!=SC_FROM):
                 if(i<Basic and i<SC_FROM):
-                    k=i;
+                    k=i
                 else:
                     if(i>Basic and i>SC_FROM):    
                        k=i-2
                     else:
-                       k=i-1;    
+                       k=i-1
                 for j in range(N):
                     if (j!=Basic and j!=SC_FROM):
                         if(j<Basic and j<SC_FROM):
-                            n=j;
+                            n=j
                         else:
                             if(j>Basic and j>SC_FROM):    
                                 n=j-2
                             else:
-                                n=j-1; 
+                                n=j-1
                         #print(k,n,i,j)
                         F[k][n]=G[i][j]
         II=np.zeros((N1))
         for i in range(N):
             if (i!=Basic and i!=SC_FROM):
                 if(i<Basic and i<SC_FROM):
-                    k=i;
+                    k=i
                 else:
                     if(i>Basic and i>SC_FROM):    
                        k=i-2
                     else:
-                       k=i-1; 
+                       k=i-1
                 II[k]=I[i]
         V=inv(F)*II #получаем вектор узловых напряжений.
         V1=np.zeros(N)
         for i in range(N1):
             if (1):
                 if(i<Basic and i<SC_FROM):
-                    k=i;
+                    k=i
                 else:
-                    if(i>=Basic and i>=SC_FROM):
+                    if i>=Basic and i>=SC_FROM:
                         k=i+2
                     else:
                         k=i+1
@@ -334,12 +376,15 @@ class Circuit:
         V1[Basic]=0
         V1[SC_FROM]=V1[SC_TO]
         for i in self.el_array:
-            if(i.el_type.find('U')==-1):
-                i.voltage=V1[i.from_]-V1[elem.to_]
+            if i.el_type.find('U')==-1:
+                i.voltage = Voltage(V1[i.to_]-V1[i.from_], i.to_, i.from_)
+                if i.el_type == 'R':
+                    i.amperage = Amperage(V1[i.to_]-V1[i.from_]/i.value, i.from_, i.to_)
 
 
 #Зададим цепь
 node_array=[Node(0),Node(1),Node(2),Node(3),Node(4),Node(5)]
 node_elem=[Element(0,"U",5,None,5,5,0),Element(1,"R",2,None,None,0,1),Element(2,"R",2,None,None,1,2),Element(3,"R",3,None,None,2,3),Element(4,"SC",None,None,None,1,4),Element(5,"R",5,None,None,3,4),Element(6,"R",3,None,None,4,5)]
 circ=Circuit(node_array,node_elem)
-
+circ.MUN()
+n_circ = circ.NodeMerge()
