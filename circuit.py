@@ -377,14 +377,14 @@ class Circuit:
         V1[SC_FROM]=V1[SC_TO]
         for i in self.el_array:
             if i.el_type.find('U')==-1:
-                i.voltage = Voltage(V1[i.to_]-V1[i.from_], i.to_, i.from_)
+                i.voltage = Voltage(V1[i.from_]-V1[i.to_], i.to_, i.from_)
                 if i.el_type == 'R':
-                    i.amperage = Amperage(V1[i.to_]-V1[i.from_]/i.value, i.from_, i.to_)
+                    i.amperage = Amperage((V1[i.from_]-V1[i.to_])/i.value, i.from_, i.to_)
 
 
 #Зададим цепь
-node_array=[Node(0),Node(1),Node(2),Node(3),Node(4),Node(5)]
-node_elem=[Element(0,"U",5,None,5,5,0),Element(1,"R",2,None,None,0,1),Element(2,"R",2,None,None,1,2),Element(3,"R",3,None,None,2,3),Element(4,"SC",None,None,None,1,4),Element(5,"R",5,None,None,3,4),Element(6,"R",3,None,None,4,5)]
+node_array=[Node(0),Node(1),Node(2),Node(3)]
+node_elem=[Element(0,"I",5,5,None,3,0),Element(1,"R",2,None,None,0,1),Element(2,"R",2,None,None,1,2),Element(3,"SC",None,None,None,1,3),Element(4,"SC",None,None,None,2,3),Element(5,"R",5,None,None,2,3)]
 circ=Circuit(node_array,node_elem)
 circ.MUN()
 n_circ = circ.NodeMerge()
