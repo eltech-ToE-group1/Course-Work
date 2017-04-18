@@ -221,9 +221,9 @@ class Circuit:
     def Refresh(self):
         for i in range(len(self.node_array)):
             for j in self.node_array[i].From:
-                self.el_array[j].from_ = i
-            for j in self.node_array[i].To:
                 self.el_array[j].to_ = i
+            for j in self.node_array[i].To:
+                self.el_array[j].from_ = i
             self.node_array[i].key = i
         for i in self.el_array:
             if (i.amperage):
@@ -265,7 +265,7 @@ class Circuit:
         # Задаем матрицы проводимойстей и токов
         Basic=0
         SC_TO=100
-        SC_FROM=100        
+        SC_FROM=100
         G=np.zeros((N,N))
         I=np.zeros((N))
         # Находим базовый узел
@@ -335,7 +335,7 @@ class Circuit:
                 if(i<Basic and i<SC_FROM):
                     k=i
                 else:
-                    if(i>Basic and i>SC_FROM):    
+                    if(i>Basic and i>SC_FROM):
                        k=i-2
                     else:
                        k=i-1
@@ -344,7 +344,7 @@ class Circuit:
                         if(j<Basic and j<SC_FROM):
                             n=j
                         else:
-                            if(j>Basic and j>SC_FROM):    
+                            if(j>Basic and j>SC_FROM):
                                 n=j-2
                             else:
                                 n=j-1
@@ -356,7 +356,7 @@ class Circuit:
                 if(i<Basic and i<SC_FROM):
                     k=i
                 else:
-                    if(i>Basic and i>SC_FROM):    
+                    if(i>Basic and i>SC_FROM):
                        k=i-2
                     else:
                        k=i-1
@@ -384,7 +384,10 @@ class Circuit:
 
 #Зададим цепь
 node_array=[Node(0),Node(1),Node(2),Node(3)]
-node_elem=[Element(0,"I",5,5,None,3,0),Element(1,"R",2,None,None,0,1),Element(2,"R",2,None,None,1,2),Element(3,"SC",None,None,None,1,3),Element(4,"SC",None,None,None,2,3),Element(5,"R",5,None,None,2,3)]
+node_elem=[Element(0,"I",1,1,None,3,0),Element(1,"R",3,None,None,0,1),Element(2,"R",2,None,None,1,2),Element(3,"SC",None,None,None,1,3),Element(4,"R",4,None,None,2,3),Element(5,"R",5,None,None,2,3)]
 circ=Circuit(node_array,node_elem)
-circ.MUN()
+#circ.MUN()
 n_circ = circ.NodeMerge()
+#n_circ.MUN()
+pass
+
