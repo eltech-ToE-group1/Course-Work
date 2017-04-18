@@ -336,11 +336,10 @@ class Circuit:
         for i in self.el_array:
             if(i.el_type.find('U')==-1):
                 i.voltage=V1[i.from_]-V1[elem.to_]
-        return (V1[elem.from_]-V1[elem.to_]) #возвращаем разницу узловых напряжений на элементе, то есть его напряжение.
 
 
 #Зададим цепь
 node_array=[Node(0),Node(1),Node(2),Node(3),Node(4),Node(5)]
 node_elem=[Element(0,"U",5,None,5,5,0),Element(1,"R",2,None,None,0,1),Element(2,"R",2,None,None,1,2),Element(3,"R",3,None,None,2,3),Element(4,"SC",None,None,None,1,4),Element(5,"R",5,None,None,3,4),Element(6,"R",3,None,None,4,5)]
 circ=Circuit(node_array,node_elem)
-print(circ.MUN(node_elem[1]))
+
