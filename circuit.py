@@ -258,24 +258,17 @@ class Circuit:
 
 
     def MUN(self): # На вход подаётся элемент
-        #self.NORMILIZE #-когда будет готов ХХ убрать коммент
         N=0
         for i in self.node_array:
             N=N+1
         # Задаем матрицы проводимойстей и токов
         Basic=0
-        SC_TO=100
-        SC_FROM=100
         G=np.zeros((N,N))
         I=np.zeros((N))
         # Находим базовый узел
         for i in self.el_array:
             if (i.el_type.find('U')!=-1):
                 Basic=i.from_
-        for i in self.el_array:
-            if (i.el_type.find('SC')!=-1):
-                SC_TO=i.to_
-                SC_FROM=i.from_
         # Заполняем собственные проводимости узлов
         for i in range(N):
             if(i!=Basic):
@@ -315,66 +308,35 @@ class Circuit:
                 if (i.voltage.minus!=Basic):
                     G[i.from_][i.voltage.minus]=1
                     I[i.from_]=-1*i.voltage.function
-        #print(I)
-       # print(G)
-        G[SC_TO][SC_TO]=G[SC_TO][SC_TO]+G[SC_FROM][SC_FROM]+2*G[SC_TO][SC_FROM]
-        for i in range(N):
-            if (i!=SC_TO and i!=SC_FROM):
-                G[SC_TO][i]=G[SC_TO][i]+G[SC_FROM][i]
-                G[i][SC_TO]=G[i][SC_TO]+G[i][SC_FROM]
-        if(SC_TO==100):
-            N1=N-1
-        else:
-            N1=N-2
+        N1=N-1;
         #print(G)
         F=np.zeros((N1,N1))
         k=0
         n=0
-        for i in range(N):
-            if (i!=Basic and i!=SC_FROM):
-                if(i<Basic and i<SC_FROM):
-                    k=i
-                else:
-                    if(i>Basic and i>SC_FROM):
-                       k=i-2
-                    else:
-                       k=i-1
-                for j in range(N):
-                    if (j!=Basic and j!=SC_FROM):
-                        if(j<Basic and j<SC_FROM):
-                            n=j
-                        else:
-                            if(j>Basic and j>SC_FROM):
-                                n=j-2
-                            else:
-                                n=j-1
-                        #print(k,n,i,j)
-                        F[k][n]=G[i][j]
+        for i in range(N1):
+            if (k==Basic):
+                k=k+1;  
+            for j in range(N1):
+                if(n==Basic):
+                    n=n+1
+                F[i][j]=G[k][n]
+                k=k+1;
+                n=n+1;
         II=np.zeros((N1))
-        for i in range(N):
-            if (i!=Basic and i!=SC_FROM):
-                if(i<Basic and i<SC_FROM):
-                    k=i
-                else:
-                    if(i>Basic and i>SC_FROM):
-                       k=i-2
-                    else:
-                       k=i-1
-                II[k]=I[i]
+        k=0;
+        for i in range(N1):
+            if(k==Basic):
+                k=k+1;
+            II[i]=I[k]
         V=inv(F)*II #получаем вектор узловых напряжений.
         V1=np.zeros(N)
+        k=0;
         for i in range(N1):
-            if (1):
-                if(i<Basic and i<SC_FROM):
-                    k=i
-                else:
-                    if i>=Basic and i>=SC_FROM:
-                        k=i+2
-                    else:
-                        k=i+1
-                V1[k]=V[i][0]
+            while(k==Basic):
+                k=k+1;
+            V1[k]=V[i][0]
+            k=k+1;
         V1[Basic]=0
-        V1[SC_FROM]=V1[SC_TO]
         for i in self.el_array:
             if i.el_type.find('U')==-1:
                 i.voltage = Voltage(V1[i.from_]-V1[i.to_], i.to_, i.from_)
