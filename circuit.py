@@ -210,23 +210,17 @@ class Circuit:
                 node_array[i.to_].From=[i.key]
     
     def FindReact(self):
-        f=0
+        Source_arr = []
         for i in self.el_array:
-            if (i.el_type.find('R')!=-1 or i.el_type.find('L')!=-1 or i.el_type.find('C')!=-1):
-                if(f==0):
-                    React_arr=[i]
-                else:
-                    React_arr.append(i)
-        return React_arr
+            if (i.el_type == 'L' or i.el_type == 'C'):
+                Source_arr.append(i.key)
+        return Source_arr
     
     def FindSource(self):
-        f=0
+        Source_arr = []
         for i in self.el_array:
-            if (i.el_type.find('U')!=-1 or i.el_type.find('I')!=-1):
-                if(f==0):
-                    Source_arr=[i]
-                else:
-                    Source_arr.append(i)
+            if (i.el_type == 'U' or i.el_type == 'I'):
+                Source_arr.append(i.key)
         return Source_arr
     
     # ищет элемент заданного типа, если он не замкнут на одном узле
@@ -328,34 +322,34 @@ class Circuit:
                 if (i.voltage.minus!=Basic):
                     G[i.from_][i.voltage.minus]=1
                     I[i.from_]=-1*i.voltage.function
-        N1=N-1;
+        N1=N-1
         #print(G)
         F=np.zeros((N1,N1))
         k=0
         n=0
         for i in range(N1):
             if (k==Basic):
-                k=k+1;  
+                k=k+1
             for j in range(N1):
                 if(n==Basic):
                     n=n+1
                 F[i][j]=G[k][n]
-                k=k+1;
-                n=n+1;
+                k=k+1
+                n=n+1
         II=np.zeros((N1))
-        k=0;
+        k=0
         for i in range(N1):
             if(k==Basic):
-                k=k+1;
+                k=k+1
             II[i]=I[k]
         V=inv(F)*II #получаем вектор узловых напряжений.
         V1=np.zeros(N)
-        k=0;
+        k=0
         for i in range(N1):
             while(k==Basic):
-                k=k+1;
+                k=k+1
             V1[k]=V[i][0]
-            k=k+1;
+            k=k+1
         V1[Basic]=0
         for i in self.el_array:
             if i.el_type.find('U')==-1:
@@ -365,11 +359,9 @@ class Circuit:
 
 
 #Зададим цепь
-node_array=[Node(0),Node(1),Node(2),Node(3)]
-node_elem=[Element(0,"I",1,1,None,3,0),Element(1,"R",3,None,None,0,1),Element(2,"R",2,None,None,1,2),Element(3,"SC",None,None,None,1,3),Element(4,"R",4,None,None,2,3),Element(5,"R",5,None,None,2,3)]
-circ=Circuit(node_array,node_elem)
-#circ.MUN()
-n_circ = circ.NodeMerge()
-#n_circ.MUN()
+node_array = [Node(0),Node(1),Node(2),Node(3)]
+node_elem = [Element(0,"I",1,1,None,3,0),Element(1,"R",3,None,None,0,1),Element(2,"R",2,None,None,1,2),Element(3,"U",1,None,1,1,3),Element(4,"R",4,None,None,2,3),Element(5,"R",5,None,None,2,3)]
+circ = Circuit(node_array,node_elem)
+a = circ.FindSource()
 pass
 
