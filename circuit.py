@@ -1,7 +1,7 @@
 from numpy.linalg import inv
 import numpy as np
 import copy
-from scipy.signal import  ss2tf
+from scipy.signal import ss2tf
 
 # На вход подаёться цепь и номер элемента, также тип реакции на элементе, относительно которого считаються матрицы C и D
 def StateSpace(source_cir, el_num, f2_type):
@@ -39,7 +39,6 @@ def StateSpace(source_cir, el_num, f2_type):
         if n_cir.el_array[i].el_type == 'U':
             n_cir.el_array[i].value = 1
             n_cir.el_array[i].voltage.function = 1
-
     # Заполняем матрицы B и D
     for i in range(len(source_list)):
         n2_cir = copy.deepcopy(n_cir)
@@ -55,12 +54,12 @@ def StateSpace(source_cir, el_num, f2_type):
         if f2_type == 'I':
             D[0][i] = n2_cir.el_array[el_num].amperage.function
         del n2_cir
-
     # Заполняем матрицы A и C
     for i in range(len(react_list)):
         n2_cir = copy.deepcopy(n_cir)
         n2_cir.change_sources(react_list[i])
         if n2_cir.el_array[react_list[i]].el_type == 'U':
+            # Меняем полярность для правильного расчёта C элемента
             n2_cir.change_polarity(react_list[i])
         n2_cir.solve()
         for j in range(len(react_list)):
@@ -444,7 +443,6 @@ class Circuit:
             # Проставляем напрявления
             self.Refresh()
 
-
     # Перед вызовом этой функции нужно расчитать цепь в МУН  и "развернуть" её если там были свёрнутые КЗ
     # Данная функция расчитывает неизвестные токи, используя закон токов Кирхгофа
     def KCL(self):
@@ -513,7 +511,6 @@ class Circuit:
         self.KCL()
         del n_cir
 
-
     # Исключает все источники, за исключением одного, чей номер подан в качестве аргумента
     def change_sources(self, num):
         for i in range(len(self.el_array)):
@@ -526,7 +523,6 @@ class Circuit:
                     self.el_array[i].el_type = 'SC'
                     self.el_array[i].amperage = None
                     self.el_array[i].voltage = None
-
 
     # Изменяет полярность элемента с выборанным номером
     def change_polarity(self, num):
