@@ -277,7 +277,7 @@ class Circuit:
         return new_circ
 
 
-    def MUN(self): # На вход подаётся элемент
+     def MUN(self): 
         N=0
         for i in self.node_array:
             N=N+1
@@ -329,7 +329,6 @@ class Circuit:
                     G[i.from_][i.voltage.minus]=1
                     I[i.from_]=-1*i.voltage.function
         N1=N-1;
-        #print(G)
         F=np.zeros((N1,N1))
         k=0
         for i in range(N1):
@@ -339,7 +338,6 @@ class Circuit:
             for j in range(N1):
                 if(n==Basic):
                     n=n+1
-                print(i,j,k,n)
                 F[i][j]=G[k][n]
                 n=n+1;
             k=k+1;
@@ -349,15 +347,20 @@ class Circuit:
             if(k==Basic):
                 k=k+1;
             II[i]=I[k]
-        V=inv(F)*II #получаем вектор узловых напряжений.
+            k=k+1
+        V=np.matmul(inv(F),II) #получаем вектор узловых напряжений.
+        print(inv(F))
+        print(II)
+        print(V)
         V1=np.zeros(N)
         k=0;
         for i in range(N1):
             while(k==Basic):
                 k=k+1;
-            V1[k]=V[i][0]
+            V1[k]=V[i]
             k=k+1;
         V1[Basic]=0
+        print(V1)
         for i in self.el_array:
             if i.el_type.find('U')==-1:
                 i.voltage = Voltage(V1[i.from_]-V1[i.to_], i.to_, i.from_)
