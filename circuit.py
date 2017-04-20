@@ -208,7 +208,27 @@ class Circuit:
                 node_array[i.to_].From.append(i.key)
             else:
                 node_array[i.to_].From=[i.key]
-
+    
+    def FindReact(self):
+        f=0
+        for i in self.el_array:
+            if (i.el_type.find('R')!=-1 or i.el_type.find('L')!=-1 or i.el_type.find('C')!=-1):
+                if(f==0):
+                    React_arr=[i]
+                else:
+                    React_arr.append(i)
+        return React_arr
+    
+    def FindSource(self):
+        f=0
+        for i in self.el_array:
+            if (i.el_type.find('U')!=-1 or i.el_type.find('I')!=-1):
+                if(f==0):
+                    Source_arr=[i]
+                else:
+                    Source_arr.append(i)
+        return Source_arr
+    
     # ищет элемент заданного типа, если он не замкнут на одном узле
     def FindEl (self, eltype):
         for i in range(len(self.el_array)):
@@ -216,7 +236,7 @@ class Circuit:
                 if self.el_array[i].el_type == eltype:
                     return i
         return -1
-
+    
     # Меняет направления в напряжении и токах элементов в соответствии с from_ и to_, а также заменяет ключи узлов на их номера в массиве и соответственно меняет from_ и to_
     def Refresh(self):
         for i in range(len(self.node_array)):
