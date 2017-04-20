@@ -332,16 +332,17 @@ class Circuit:
         #print(G)
         F=np.zeros((N1,N1))
         k=0
-        n=0
         for i in range(N1):
             if (k==Basic):
                 k=k+1;  
+            n=0;
             for j in range(N1):
                 if(n==Basic):
                     n=n+1
+                print(i,j,k,n)
                 F[i][j]=G[k][n]
-                k=k+1;
                 n=n+1;
+            k=k+1;
         II=np.zeros((N1))
         k=0;
         for i in range(N1):
