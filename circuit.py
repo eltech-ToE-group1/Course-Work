@@ -3,79 +3,6 @@ import numpy as np
 import copy
 from scipy.signal import ss2tf
 
-# На вход подаёться цепь и номер элемента, также тип реакции на элементе, относительно которого считаються матрицы C и D
-def StateSpace(source_cir, el_num, f2_type):
-    # Список реактивных элементов
-    react_list = source_cir.FindReact()
-    # Список источников сигнала
-    source_list = source_cir.FindSource()
-    # Инициируем матрицы уравнения состояния
-    Num1 = len(react_list)
-    Num2 = len(source_list)
-    A = np.zeros((Num1, Num1))
-    B = np.zeros((Num1, Num2))
-    C = np.zeros((1, Num1))
-    D = np.zeros((1, Num2))
-    n_cir = copy.deepcopy(source_cir)
-    # Проходимся по реактивным элементам
-    for i in react_list:
-        # Заменяем индуктивность на ИТ с током 1
-        if n_cir.el_array[i].el_type == 'L':
-            n_cir.el_array[i].el_type = 'I'
-            n_cir.el_array[i].value = 1
-            n_cir.el_array[i].amperage = Amperage(1, n_cir.el_array[i].from_, n_cir.el_array[i].to_ )
-        # Заменяем конденсаторы на ИН с напряжением 1
-        if n_cir.el_array[i].el_type == 'C':
-            n_cir.el_array[i].el_type = 'U'
-            n_cir.el_array[i].value = 1
-            n_cir.el_array[i].voltage = Voltage(1, n_cir.el_array[i].to_, n_cir.el_array[i].from_)
-    # Проходимся по источникам
-    for i in source_list:
-        # Заменяем силу тока в ИТ
-        if n_cir.el_array[i].el_type == 'I':
-            n_cir.el_array[i].value = 1
-            n_cir.el_array[i].amperage.function = 1
-        # Заменяем напряжение в ИН
-        if n_cir.el_array[i].el_type == 'U':
-            n_cir.el_array[i].value = 1
-            n_cir.el_array[i].voltage.function = 1
-    # Заполняем матрицы B и D
-    for i in range(len(source_list)):
-        n2_cir = copy.deepcopy(n_cir)
-        n2_cir.change_sources(source_list[i])
-        n2_cir.solve()
-        for j in range(len(react_list)):
-            if n2_cir.el_array[react_list[j]].el_type == 'I':
-                B[j][i] = n2_cir.el_array[react_list[j]].voltage.function/source_cir.el_array[react_list[j]].value
-            if n2_cir.el_array[react_list[j]].el_type == 'SC':
-                B[j][i] = n2_cir.el_array[react_list[j]].amperage.function/source_cir.el_array[react_list[j]].value
-        if f2_type == 'U':
-            D[0][i] = n2_cir.el_array[el_num].voltage.function
-        if f2_type == 'I':
-            D[0][i] = n2_cir.el_array[el_num].amperage.function
-        del n2_cir
-    # Заполняем матрицы A и C
-    for i in range(len(react_list)):
-        n2_cir = copy.deepcopy(n_cir)
-        n2_cir.change_sources(react_list[i])
-        if n2_cir.el_array[react_list[i]].el_type == 'U':
-            # Меняем полярность для правильного расчёта C элемента
-            n2_cir.change_polarity(react_list[i])
-        n2_cir.solve()
-        for j in range(len(react_list)):
-            if n2_cir.el_array[react_list[j]].el_type == 'U':
-                    A[j][i] = -(n2_cir.el_array[react_list[j]].amperage.function/source_cir.el_array[react_list[j]].value)
-            if n2_cir.el_array[react_list[j]].el_type == 'I':
-                A[j][i] = n2_cir.el_array[react_list[j]].voltage.function/source_cir.el_array[react_list[j]].value
-            if n2_cir.el_array[react_list[j]].el_type == 'SC':
-                A[j][i] = n2_cir.el_array[react_list[j]].amperage.function/source_cir.el_array[react_list[j]].value
-        if f2_type == 'U':
-            C[0][i] = n2_cir.el_array[el_num].voltage.function
-        if f2_type == 'I':
-            C[0][i] = n2_cir.el_array[el_num].amperage.function
-        del n2_cir
-    return A, B, C, D
-
 class Voltage:
     def __init__(self, function, plus, minus):
         # Пока-что будем считать сигнал постоянным
@@ -534,6 +461,81 @@ class Circuit:
         self.node_array[nodefrom].From.append(num)
         self.Refresh()
 
+    # На вход подаёться цепь и номер элемента, также тип реакции на элементе, относительно которого считаються матрицы C и D
+    def StateSpace(self, el_num, f2_type):
+        # Список реактивных элементов
+        react_list = self.FindReact()
+        # Список источников сигнала
+        source_list = self.FindSource()
+        # Инициируем матрицы уравнения состояния
+        Num1 = len(react_list)
+        Num2 = len(source_list)
+        A = np.zeros((Num1, Num1))
+        B = np.zeros((Num1, Num2))
+        C = np.zeros((1, Num1))
+        D = np.zeros((1, Num2))
+        n_cir = copy.deepcopy(self)
+        # Проходимся по реактивным элементам
+        for i in react_list:
+            # Заменяем индуктивность на ИТ с током 1
+            if n_cir.el_array[i].el_type == 'L':
+                n_cir.el_array[i].el_type = 'I'
+                n_cir.el_array[i].value = 1
+                n_cir.el_array[i].amperage = Amperage(1, n_cir.el_array[i].from_, n_cir.el_array[i].to_)
+            # Заменяем конденсаторы на ИН с напряжением 1
+            if n_cir.el_array[i].el_type == 'C':
+                n_cir.el_array[i].el_type = 'U'
+                n_cir.el_array[i].value = 1
+                n_cir.el_array[i].voltage = Voltage(1, n_cir.el_array[i].to_, n_cir.el_array[i].from_)
+        # Проходимся по источникам
+        for i in source_list:
+            # Заменяем силу тока в ИТ
+            if n_cir.el_array[i].el_type == 'I':
+                n_cir.el_array[i].value = 1
+                n_cir.el_array[i].amperage.function = 1
+            # Заменяем напряжение в ИН
+            if n_cir.el_array[i].el_type == 'U':
+                n_cir.el_array[i].value = 1
+                n_cir.el_array[i].voltage.function = 1
+        # Заполняем матрицы B и D
+        for i in range(len(source_list)):
+            n2_cir = copy.deepcopy(n_cir)
+            n2_cir.change_sources(source_list[i])
+            n2_cir.solve()
+            for j in range(len(react_list)):
+                if n2_cir.el_array[react_list[j]].el_type == 'I':
+                    B[j][i] = n2_cir.el_array[react_list[j]].voltage.function / self.el_array[react_list[j]].value
+                if n2_cir.el_array[react_list[j]].el_type == 'SC':
+                    B[j][i] = n2_cir.el_array[react_list[j]].amperage.function / self.el_array[
+                        react_list[j]].value
+            if f2_type == 'U':
+                D[0][i] = n2_cir.el_array[el_num].voltage.function
+            if f2_type == 'I':
+                D[0][i] = n2_cir.el_array[el_num].amperage.function
+            del n2_cir
+        # Заполняем матрицы A и C
+        for i in range(len(react_list)):
+            n2_cir = copy.deepcopy(n_cir)
+            n2_cir.change_sources(react_list[i])
+            if n2_cir.el_array[react_list[i]].el_type == 'U':
+                # Меняем полярность для правильного расчёта C элемента
+                n2_cir.change_polarity(react_list[i])
+            n2_cir.solve()
+            for j in range(len(react_list)):
+                if n2_cir.el_array[react_list[j]].el_type == 'U':
+                    A[j][i] = -(
+                        n2_cir.el_array[react_list[j]].amperage.function / self.el_array[react_list[j]].value)
+                if n2_cir.el_array[react_list[j]].el_type == 'I':
+                    A[j][i] = n2_cir.el_array[react_list[j]].voltage.function / self.el_array[react_list[j]].value
+                if n2_cir.el_array[react_list[j]].el_type == 'SC':
+                    A[j][i] = n2_cir.el_array[react_list[j]].amperage.function / self.el_array[
+                        react_list[j]].value
+            if f2_type == 'U':
+                C[0][i] = n2_cir.el_array[el_num].voltage.function
+            if f2_type == 'I':
+                C[0][i] = n2_cir.el_array[el_num].amperage.function
+            del n2_cir
+        return A, B, C, D
 
 # Зададим цепь
 node_array = [Node(0), Node(1), Node(2), Node(3)]
@@ -541,6 +543,6 @@ node_elem = [Element(0, "I", 1, 1, None, 0, 1), Element(1, "R", 2, None, None, 1
              Element(2, "L", 2, None, None, 1, 2), Element(3, "R", 1, None, None, 2, 3),
              Element(4, "C", 4, None, None, 3, 0), Element(5, "R", 0.5, None, None, 3, 0)]
 circ = Circuit(node_array, node_elem)
-a = StateSpace(circ, 5, 'I')
+a = circ.StateSpace(5, 'I')
 HS = ss2tf(a[0], a[1], a[2], a[3])
 pass
