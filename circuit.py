@@ -538,11 +538,11 @@ class Circuit:
         return A, B, C, D
 
 # Зададим цепь
-node_array = [Node(0), Node(1), Node(2), Node(3)]
+"""node_array = [Node(0), Node(1), Node(2), Node(3)]
 node_elem = [Element(0, "I", 1, 1, None, 0, 1), Element(1, "R", 2, None, None, 1, 0),
              Element(2, "L", 2, None, None, 1, 2), Element(3, "R", 1, None, None, 2, 3),
              Element(4, "C", 4, None, None, 3, 0), Element(5, "R", 0.5, None, None, 3, 0)]
 circ = Circuit(node_array, node_elem)
-a = circ.StateSpace(5, 'I')
-HS = ss2tf(a[0], a[1], a[2], a[3])
+a = circ.StateSpace(5, 'U')
+HS = ss2tf(a[0], a[1], a[2], a[3])"""
 pass
