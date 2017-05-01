@@ -7,6 +7,7 @@ from sympy.parsing.sympy_parser import parse_expr
 from scipy.fftpack import  fft, fftshift
 from scipy.signal import ss2tf
 import matplotlib.pyplot as plt
+import copy
 import numpy as np
 
 
@@ -28,8 +29,8 @@ class SignalCircuit(cir.Circuit):
         # Время сигнала
         self.Tau = Tau
 
-    def H_t(self):
-        ABCD = cir.Circuit.StateSpace(self, 5, 'U')
+    def H_t(self, type):
+        ABCD = cir.Circuit.StateSpace(self, 5, type)
         H_S=ss2tf(ABCD[0],ABCD[1],ABCD[2],ABCD[3])
         HS0=''
         HS1=''
@@ -73,10 +74,11 @@ class SignalCircuit(cir.Circuit):
             j=j-1
         HS='('+HS0+')'+'/('+HS1+')'
         HS = parse_expr(HS, evaluate=False)
+        # Возвращает h(t)
         return (inverse_laplace_transform(HS,s,t))
 
-    def H1_t(self):
-        ABCD = cir.Circuit.StateSpace(self, 5, 'U')
+    def H1_t(self, type):
+        ABCD = cir.Circuit.StateSpace(self, 5, type)
         H_S=ss2tf(ABCD[0],ABCD[1],ABCD[2],ABCD[3])
         HS0=''
         HS1=''
@@ -119,21 +121,140 @@ class SignalCircuit(cir.Circuit):
                 HS1=HS1+num
             j=j-1
         HS='('+HS0+')'+'/('+HS1+')'
-        HS = parse_expr(HS, evaluate=False)/s
+        HS = parse_expr(HS, evaluate=False)
+        HS = HS/s
+        # Возвращает h1(t)
         return (inverse_laplace_transform(HS,s,t))
+
+    # N - Количество точек
+    def Fourier(self, N = 200):
+        # Задаём шаг
+        T = self.Tau/N
+        x = np.linspace(0.0, N * T, N)
+        y = []
+        # Заполняем массив значений сигнала
+        for i in x:
+            y.append(self.signal.subs(t, i))
+        # Заполняем значения амплитудного спектра
+        yf = fftshift(fft(y))
+        # Заполняем частоты
+        xf = np.linspace(-1.0 / (2.0 * T), 1.0 / (2.0 * T), N)
+        yf2 = copy.deepcopy(2.0 / N * yf)
+        # Фильтруем помехи
+        threshold = np.max(np.abs(yf2)) / 10000
+        for i in range(len(yf2)):
+            if abs(yf2[i]) < threshold:
+                yf2[i] = 0
+        xp = []
+        yp = []
+        # Заполняем новые массивы без помех
+        for i in range(len(yf2)):
+            if yf2[i] != 0:
+                xp.append(xf[i])
+                yp.append(yf2[i])
+        yp = np.angle(yp)
+        # Первые 2 элемента х и у амплитудного спектра, вторые 2 фазового
+        return xf, yf, xp, yp
+
+    # Создаёт точки для графика сигнала
+    def SignalGraph(self, N = 200):
+        T = self.Tau / N
+        x = np.linspace(0.0, N * T, N)
+        y = []
+        # Заполняем массив значений сигнала
+        for i in x:
+            y.append(self.signal.subs(t, i))
+        return x, y
+
+    # Создаёт точки для графиков h(t), h1(t) f2(t)
+    def hth1tf2Graph(self, type, N = 200):
+        T = self.Tau / N
+        x = np.linspace(0.0, N * T, N)
+        h = self.H_t(type)
+        h1 = self.H1_t(type)
+        f2 = h*self.signal
+        yh = []
+        for i in x:
+            if int(i) == i:
+                h = h.subs(Heaviside(t - int(i)), Heaviside(t - i, 1))
+            else:
+                h = h.subs(Heaviside(t - i), Heaviside(t - i, 1))
+            yh.append(h.subs(t, i))
+        yh1 = []
+        for i in x:
+            if int(i) == i:
+                h1 = h1.subs(Heaviside(t - int(i)), Heaviside(t - i, 1))
+            else:
+                h1 = h1.subs(Heaviside(t - i), Heaviside(t - i, 1))
+            yh1.append(h1.subs(t, i))
+        yf2 = []
+        for i in x:
+            if int(i) == i:
+                f2 = f2.subs(Heaviside(t - int(i)), Heaviside(t - i, 1))
+            else:
+                f2 = f2.subs(Heaviside(t - i), Heaviside(t - i, 1))
+            yf2.append(f2.subs(t, i))
+        return x, yh, yh1, yf2
+
+
+
 
 node_array = [cir.Node(0), cir.Node(1), cir.Node(2), cir.Node(3)]
 node_elem = [cir.Element(0, "I", 1, 1, None, 0, 1), cir.Element(1, "R", 2, None, None, 1, 0),
              cir.Element(2, "L", 2, None, None, 1, 2), cir.Element(3, "R", 1, None, None, 2, 3),
              cir.Element(4, "C", 4, None, None, 3, 0), cir.Element(5, "R", 0.5, None, None, 3, 0)]
 circ = SignalCircuit(node_array, node_elem, 1, 1, 1)
-a = circ.H_t()
-b = circ.H1_t()
-x = np.arange(0.01, pi, 0.01)
-y = []
-for i in x:
-    y.append(b.subs(t, i))
-plt.plot(x,y)
+f2xy = circ.hth1tf2Graph('I')
+fftxy = circ.Fourier()
+sigxy = circ.SignalGraph()
+
+# Сигнал
+plt.figure(1)
+plt.xlabel('t')
+plt.ylabel('f1(t)')
+plt.title('Signal f1(t)')
 plt.grid()
+plt.plot(sigxy[0],sigxy[1])
+
+# Амплитуда
+plt.figure(2)
+plt.xlabel('Omega')
+plt.ylabel('|A|')
+plt.title('Ampletude spectre')
+plt.grid()
+plt.plot(fftxy[0],fftxy[1])
+
+# Фаза
+plt.figure(3)
+plt.xlabel('Omega')
+plt.ylabel('arg(A)')
+plt.title('Phase spectre')
+plt.grid()
+plt.plot(fftxy[2],fftxy[3])
+
+# Выходной сигнал
+plt.figure(4)
+plt.xlabel('t')
+plt.ylabel('f2(t)')
+plt.title('Reaction f2(t)')
+plt.grid()
+plt.plot(f2xy[0],f2xy[3])
+
+# h(t)
+plt.figure(5)
+plt.xlabel('t')
+plt.ylabel('h(t)')
+plt.title('h(t)')
+plt.grid()
+plt.plot(f2xy[0],f2xy[1])
+
+# h1(t)
+plt.figure(6)
+plt.xlabel('t')
+plt.ylabel('h1(t)')
+plt.title('h1(t)')
+plt.grid()
+plt.plot(f2xy[0],f2xy[2])
+
 plt.show()
 pass
