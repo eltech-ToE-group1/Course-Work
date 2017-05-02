@@ -2,7 +2,7 @@ import circuit as cir
 from sympy.abc import  s, t
 from sympy import Heaviside, sin, cos, exp
 from numpy import pi
-from sympy.integrals import inverse_laplace_transform
+from sympy.integrals import laplace_transform, inverse_laplace_transform
 from sympy.parsing.sympy_parser import parse_expr
 from scipy.fftpack import  fft, fftshift
 from scipy.signal import ss2tf
@@ -16,13 +16,13 @@ class SignalCircuit(cir.Circuit):
     def __init__(self, node_array, el_array, sigtype, A, Tau, signal = 0):
         cir.Circuit.__init__(self, node_array, el_array)
         if sigtype == 1:
-            self.signal = A*(sin(t*pi/Tau) - sin(t*pi/Tau)*Heaviside(t-Tau,1))
+            self.signal = A*(sin(t*pi/Tau) - sin(t*pi/Tau)*Heaviside(t-Tau))
         if sigtype == 2:
-            self.signal = 2*A/Tau*(t-t*Heaviside(t - Tau/2, 1))+(-2*A/Tau*t +2*A)*(Heaviside(t- Tau/2, 1)-Heaviside(t - Tau, 1))
+            self.signal = 2*A/Tau*(t-t*Heaviside(t - Tau/2))+(-2*A/Tau*t +2*A)*(Heaviside(t- Tau/2)-Heaviside(t - Tau))
         if sigtype == 3:
-            self.signal = A*(cos(t*pi/Tau) - cos(t*pi/Tau)*Heaviside(t-Tau,1))
+            self.signal = A*(cos(t*pi/Tau) - cos(t*pi/Tau)*Heaviside(t-Tau))
         if sigtype == 4:
-            self.signal = A*(1 - 2*Heaviside(t-Tau/2, 1))
+            self.signal = A*(1 - 2*Heaviside(t-Tau/2))
         # Сигнал, заданный пользователем
         if sigtype == 5:
             self.signal = signal
@@ -74,8 +74,10 @@ class SignalCircuit(cir.Circuit):
             j=j-1
         HS='('+HS0+')'+'/('+HS1+')'
         HS = parse_expr(HS, evaluate=False)
-        # Возвращает h(t) и h1(t)
-        return (inverse_laplace_transform(HS,s,t)), (inverse_laplace_transform(HS/s,s,t))
+        F1S = laplace_transform(self.signal,t,s)
+        F1S = F1S[0]
+        # Возвращает h(t), h1(t) и f2(t)
+        return (inverse_laplace_transform(HS,s,t)), (inverse_laplace_transform(HS/s,s,t)), inverse_laplace_transform(HS*F1S, s, t)
 
     # N - Количество точек
     def Fourier(self, N = 200):
@@ -83,9 +85,14 @@ class SignalCircuit(cir.Circuit):
         T = self.Tau/N
         x = np.linspace(0.0, N * T, N)
         y = []
+        f2 = copy.deepcopy(self.signal)
         # Заполняем массив значений сигнала
         for i in x:
-            y.append(self.signal.subs(t, i))
+            if int(i) == i:
+                f2 = f2.subs(Heaviside(t - int(i)), Heaviside(t - i, 1))
+            else:
+                f2 = f2.subs(Heaviside(t - i), Heaviside(t - i, 1))
+            y.append(f2.subs(t, i))
         # Заполняем значения амплитудного спектра
         yf = fftshift(fft(y))
         # Заполняем частоты
@@ -112,9 +119,14 @@ class SignalCircuit(cir.Circuit):
         T = self.Tau / N
         x = np.linspace(0.0, N * T, N)
         y = []
+        f2 = copy.deepcopy(self.signal)
         # Заполняем массив значений сигнала
         for i in x:
-            y.append(self.signal.subs(t, i))
+            if int(i) == i:
+                f2 = f2.subs(Heaviside(t - int(i)), Heaviside(t - i, 1))
+            else:
+                f2 = f2.subs(Heaviside(t - i), Heaviside(t - i, 1))
+            y.append(f2.subs(t, i))
         return x, y
 
     # Создаёт точки для графиков h(t), h1(t) f2(t) для элемента num и типа реакции type
@@ -124,7 +136,7 @@ class SignalCircuit(cir.Circuit):
         hs = self.H_t(num,type)
         h = hs[0]
         h1 = hs[1]
-        f2 = h*self.signal
+        f2 = hs[2]
         yh = []
         for i in x:
             if int(i) == i:
@@ -155,7 +167,7 @@ node_array = [cir.Node(0), cir.Node(1), cir.Node(2), cir.Node(3)]
 node_elem = [cir.Element(0, "I", 1, 1, None, 0, 1), cir.Element(1, "R", 2, None, None, 1, 0),
              cir.Element(2, "L", 2, None, None, 1, 2), cir.Element(3, "R", 1, None, None, 2, 3),
              cir.Element(4, "C", 4, None, None, 3, 0), cir.Element(5, "R", 0.5, None, None, 3, 0)]
-circ = SignalCircuit(node_array, node_elem, 3, 1, 2)
+circ = SignalCircuit(node_array, node_elem, 4, 10, 20)
 f2xy = circ.hth1tf2Graph(5,'I')
 fftxy = circ.Fourier()
 sigxy = circ.SignalGraph()
