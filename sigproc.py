@@ -22,15 +22,15 @@ class SignalCircuit(cir.Circuit):
         if sigtype == 3:
             self.signal = A*(cos(t*pi/Tau) - cos(t*pi/Tau)*Heaviside(t-Tau,1))
         if sigtype == 4:
-            self.signal = A*(1 - 2*Heaviside(t-Tau/2),1)
+            self.signal = A*(1 - 2*Heaviside(t-Tau/2, 1))
         # Сигнал, заданный пользователем
         if sigtype == 5:
             self.signal = signal
         # Время сигнала
         self.Tau = Tau
 
-    def H_t(self, type):
-        ABCD = cir.Circuit.StateSpace(self, 5, type)
+    def H_t(self,num, type):
+        ABCD = cir.Circuit.StateSpace(self, num, type)
         H_S=ss2tf(ABCD[0],ABCD[1],ABCD[2],ABCD[3])
         HS0=''
         HS1=''
@@ -74,57 +74,8 @@ class SignalCircuit(cir.Circuit):
             j=j-1
         HS='('+HS0+')'+'/('+HS1+')'
         HS = parse_expr(HS, evaluate=False)
-        # Возвращает h(t)
-        return (inverse_laplace_transform(HS,s,t))
-
-    def H1_t(self, type):
-        ABCD = cir.Circuit.StateSpace(self, 5, type)
-        H_S=ss2tf(ABCD[0],ABCD[1],ABCD[2],ABCD[3])
-        HS0=''
-        HS1=''
-        f=0
-        j=H_S[0][0].size-1
-        for i in H_S[0][0]:
-            num=str(i)
-            if i:
-                if(j>1):
-                    num=num+'*s**'+str(j)
-                else:
-                    if (j>0):
-                        num=num+'*s'
-                if f:
-                    if (i<0):
-                        HS0=HS0+'-'
-                    else:
-                        HS0=HS0+'+'
-                else:
-                    f=1
-                HS0=HS0+num
-            j=j-1
-        j=H_S[1].size-1
-        f=0
-        for i in H_S[1]:
-            num=str(i)
-            if i:
-                if(j>1):
-                    num=num+'*s**'+str(j)
-                else:
-                    if (j>0):
-                        num=num+'*s'
-                if f:
-                    if (i<0):
-                        HS1=HS1+'-'
-                    else:
-                        HS1=HS1+'+'
-                else:
-                    f=1
-                HS1=HS1+num
-            j=j-1
-        HS='('+HS0+')'+'/('+HS1+')'
-        HS = parse_expr(HS, evaluate=False)
-        HS = HS/s
-        # Возвращает h1(t)
-        return (inverse_laplace_transform(HS,s,t))
+        # Возвращает h(t) и h1(t)
+        return (inverse_laplace_transform(HS,s,t)), (inverse_laplace_transform(HS/s,s,t))
 
     # N - Количество точек
     def Fourier(self, N = 200):
@@ -166,12 +117,13 @@ class SignalCircuit(cir.Circuit):
             y.append(self.signal.subs(t, i))
         return x, y
 
-    # Создаёт точки для графиков h(t), h1(t) f2(t)
-    def hth1tf2Graph(self, type, N = 200):
+    # Создаёт точки для графиков h(t), h1(t) f2(t) для элемента num и типа реакции type
+    def hth1tf2Graph(self,num, type, N = 200):
         T = self.Tau / N
         x = np.linspace(0.0, N * T, N)
-        h = self.H_t(type)
-        h1 = self.H1_t(type)
+        hs = self.H_t(num,type)
+        h = hs[0]
+        h1 = hs[1]
         f2 = h*self.signal
         yh = []
         for i in x:
@@ -203,8 +155,8 @@ node_array = [cir.Node(0), cir.Node(1), cir.Node(2), cir.Node(3)]
 node_elem = [cir.Element(0, "I", 1, 1, None, 0, 1), cir.Element(1, "R", 2, None, None, 1, 0),
              cir.Element(2, "L", 2, None, None, 1, 2), cir.Element(3, "R", 1, None, None, 2, 3),
              cir.Element(4, "C", 4, None, None, 3, 0), cir.Element(5, "R", 0.5, None, None, 3, 0)]
-circ = SignalCircuit(node_array, node_elem, 1, 1, 1)
-f2xy = circ.hth1tf2Graph('I')
+circ = SignalCircuit(node_array, node_elem, 3, 1, 2)
+f2xy = circ.hth1tf2Graph(5,'I')
 fftxy = circ.Fourier()
 sigxy = circ.SignalGraph()
 
