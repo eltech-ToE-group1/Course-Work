@@ -100,7 +100,7 @@ class SignalCircuit(cir.Circuit):
         return xf, yf, xp, yp
 
     # Создаёт точки для графика сигнала
-    def SignalGraph(self,x):
+    def SignalGraph(self, x):
         y = []
         f2 = copy.deepcopy(self.signal)
         # Заполняем массив значений сигнала
@@ -116,31 +116,65 @@ class SignalCircuit(cir.Circuit):
     def hth1tGraph(self, num, type, N = 200, deltay = 0.0001):
         T = self.Tau / N
         x = np.linspace(deltay, N * T, N)
-        hs = self.H_s(num,type)
+        hs = self.H_s(num, type)
         h = hs[0]
         h1 = hs[1]
-        yh = talbot_inverse(h,x)
-        yh1 = talbot_inverse(h1,x)
+        yh = talbot_inverse(h, x)
+        yh1 = talbot_inverse(h1, x)
         while abs(yh[len(yh) - 1] - yh[len(yh) - 2]) > deltay:
             temp = x[len(x) - 1] + T
             x = np.append(x,temp)
-            yh = np.append(yh, talbot_inverse(h,temp))
+            yh = np.append(yh, talbot_inverse(h, temp))
             yh1 = np.append(yh1, talbot_inverse(h1, temp))
-        return x, yh, yh1
+        return x, yh, yh1, h
+
+    def frequency_analysis(self, h_s, N = 100):
+        # Задаём шаг
+        T = self.Tau/N
+        xf = np.linspace( 0 , 1.0 / (2.0 * T), N, dtype=complex)
+        fun_res_ch = np.zeros(np.shape(xf), dtype=complex)
+        fun_res_zn = np.zeros(np.shape(xf), dtype=complex)
+        # Заполняем массив значений сигнала
+        for i in range(len(h_s[0])):
+            fun_res_ch = fun_res_ch + (h_s[0][i]) * (xf*1.j) ** (len(h_s[0]) - i)
+        for i in range(len(h_s[1])):
+            fun_res_zn = fun_res_zn + (h_s[1][i]) * (xf*1.j) ** (len(h_s[1]) - i)
+        # Заполняем значения амплитудного спектра
+        y = np.ndarray(shape = np.shape(fun_res_ch), dtype=complex, buffer = fun_res_ch/fun_res_zn)
+        # Заполняем частоты
+        yf = np.abs(y)
+        yf2 = copy.deepcopy(2.0 / N * y)
+        # Фильтруем помехи
+        threshold = np.max(np.abs(yf2)) / 10000
+        for i in range(len(yf2)):
+            if abs(yf2[i]) < threshold:
+                yf2[i] = 0
+        xp = []
+        yp = []
+        # Заполняем новые массивы без помех
+        for i in range(len(yf2)):
+            if yf2[i] != 0:
+                xp.append(xf[i])
+                yp.append(yf2[i])
+        yp = np.angle(yp)
+        yf = np.abs(yf)
+        # Первые 2 элемента х и у амплитудного спектра, вторые 2 фазового
+        return xf, yf, xp, yp
 
 
 t = symbols("t", positive=True)
 node_array = [cir.Node(0), cir.Node(1), cir.Node(2), cir.Node(3)]
-node_elem = [cir.Element(0, "U", 1, None, 1, 0, 1), cir.Element(1, "C", 4, None, None, 1, 2),
-             cir.Element(2, "R", 1, None, None, 2, 1), cir.Element(3, "C", 1, None, None, 2, 3),
-             cir.Element(4, "R", 0.5, None, None, 3, 0), cir.Element(5, "R", 0.5, None, None, 3, 0)]
-circ = SignalCircuit(node_array, node_elem, 3, 1, 5)
-hxy = circ.hth1tGraph(5,'U', 100)
+node_elem = [cir.Element(0, "I", 1, 1, None, 0, 1), cir.Element(1, "R", 2, None, None, 1, 0),
+             cir.Element(2, "L", 2, None, None, 1, 2), cir.Element(3, "R", 1, None, None, 2, 3),
+             cir.Element(4, "C", 4, None, None, 3, 0), cir.Element(5, "R", 0.5, None, None, 3, 0)]
+circ = SignalCircuit(node_array, node_elem, 2, 10, 5)
+hxy = circ.hth1tGraph(5, 'I', 100, 0.00005)
 fftxy = circ.Fourier()
 sigxy = circ.SignalGraph(hxy[0])
 f2x = sigxy[0]
 f2xy = np.convolve(sigxy[1], hxy[1])
 f2y = f2xy[0:len(sigxy[0])]
+frq_a = circ.frequency_analysis(hxy[3])
 
 # Сигнал
 plt.figure(1)
@@ -148,7 +182,7 @@ plt.xlabel('t')
 plt.ylabel('f1(t)')
 plt.title('Signal f1(t)')
 plt.grid()
-plt.plot(sigxy[0],sigxy[1])
+plt.plot(sigxy[0], sigxy[1])
 
 # Амплитуда
 plt.figure(2)
@@ -156,7 +190,7 @@ plt.xlabel('Omega')
 plt.ylabel('|A|')
 plt.title('Ampletude spectre')
 plt.grid()
-plt.plot(fftxy[0],fftxy[1])
+plt.plot(fftxy[0], fftxy[1])
 
 # Фаза
 plt.figure(3)
@@ -164,7 +198,7 @@ plt.xlabel('Omega')
 plt.ylabel('arg(A)')
 plt.title('Phase spectre')
 plt.grid()
-plt.plot(fftxy[2],fftxy[3])
+plt.plot(fftxy[2], fftxy[3])
 
 # Выходной сигнал
 plt.figure(4)
@@ -172,7 +206,7 @@ plt.xlabel('t')
 plt.ylabel('f2(t)')
 plt.title('Reaction f2(t)')
 plt.grid()
-plt.plot(f2x,f2y)
+plt.plot(f2x, f2y)
 
 # h(t)
 plt.figure(5)
@@ -180,7 +214,7 @@ plt.xlabel('t')
 plt.ylabel('h(t)')
 plt.title('h(t)')
 plt.grid()
-plt.plot(hxy[0],hxy[1])
+plt.plot(hxy[0], hxy[1])
 
 # h1(t)
 plt.figure(6)
@@ -188,7 +222,22 @@ plt.xlabel('t')
 plt.ylabel('h1(t)')
 plt.title('h1(t)')
 plt.grid()
-plt.plot(hxy[0],hxy[2])
+plt.plot(hxy[0], hxy[2])
 
+# АЧХ
+plt.figure(7)
+plt.xlabel('Omega')
+plt.ylabel('|H(jw)|')
+plt.title('АЧХ')
+plt.grid()
+plt.plot(frq_a[0], frq_a[1])
+
+# ФЧХ
+plt.figure(8)
+plt.xlabel('Omega')
+plt.ylabel('arg(A)')
+plt.title('ФЧХ')
+plt.grid()
+plt.plot(frq_a[2], frq_a[3])
 plt.show()
 pass
