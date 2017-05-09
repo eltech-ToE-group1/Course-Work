@@ -1,10 +1,11 @@
 import circuit as cir
 from sympy import Heaviside, sin, cos, symbols
-from scipy.fftpack import fft, fftshift
+from scipy.fftpack import fft, fftshift, fftfreq
 from scipy.signal import ss2tf
 import matplotlib.pyplot as plt
 import copy
 import numpy as np
+from math import exp,isnan
 
 # Расчёт значений обратного преобразования лапласа функции f_s, заданной матрично в точках t_z
 def talbot_inverse(f_s, t_z, M = 64):
@@ -46,6 +47,7 @@ class SignalCircuit(cir.Circuit):
             self.signal = A*(cos(t*np.pi/Tau) - cos(t*np.pi/Tau)*Heaviside(t-Tau))
         if sigtype == 4:
             self.signal = A*(1 - 2*Heaviside(t-Tau/2) + Heaviside(t-Tau))
+        
         # Сигнал, заданный пользователем
         if sigtype == 5:
             self.signal = signal
@@ -98,6 +100,82 @@ class SignalCircuit(cir.Circuit):
         yf = np.abs(yf)
         # Первые 2 элемента х и у амплитудного спектра, вторые 2 фазового
         return xf, yf, xp, yp
+    
+    def FourierPeriod(self, Stype, H_S, A, Tau,Period = 0, N = 7):
+        HS0=0
+        HS1=0
+        j=H_S[0].size-1;
+        for i in H_S[0]:
+            num=i
+            if i:
+                if(j>1):
+                    num=num*(t**j)
+                else:
+                    if (j>0):
+                        num=num*(t)
+                HS0=HS0+num
+            j=j-1
+        j=H_S[1].size-1
+        for i in H_S[1]:
+            num=i
+            if i:
+                if(j>1):
+                    num=num*(t**j)
+                else:
+                    if (j>0):
+                        num=num*(t)
+                HS1=HS1+num
+            j=j-1
+        HS=HS0/(HS1)
+        if (Period == 0):
+            Period=self.Tau*2
+        OMEGA = 2*np.pi/Period
+        x = np.linspace(0.0,Period,200)
+        xf = np.linspace(0.0,OMEGA*N,N+1)
+        if (Stype==1):
+            A_jw=(4*A/t)*sin((Tau/4)*t)*sin((Tau/4)*t)
+            F_jw=np.pi/2-(Tau/2)*t
+        if (Stype==2):
+            A_jw=(4*A/t)*sin((Tau/4)*t)*sin((Tau/4)*t)
+            F_jw=np.pi/2-(Tau/2)*t
+        if (Stype==3):
+            A_jw=(4*A/t)*sin((Tau/4)*t)*sin((Tau/4)*t)
+            F_jw=np.pi/2-(Tau/2)*t                 
+        if (Stype==4):
+            A_jw=(4*A/t)*sin((Tau/4)*t)*sin((Tau/4)*t)
+            F_jw=np.pi/2-(Tau/2)*t
+        a1 = []
+        f1=[]
+        a2=[]
+        f2=[]
+        j=0;
+        for i in range(len(xf)):
+            a1.append(A_jw.subs(t,xf[i])/(Period/2))
+            if (isnan(a1[i])):
+                a1[i]=0 
+            if (a1[i]<0.00001):
+                a1[i]=0
+            if (a1[i]==0):
+                j=0;
+            f1.append(F_jw.subs(t,xf[j]))
+            a2.append(a1[i]*np.abs(HS.subs(t,xf[i]*1.j)))
+            f2.append(f1[i]+np.angle(complex(HS.subs(t,xf[i]*1.j))))
+            j=j+1
+            # Заполняем значения амплитудного спектра
+        F1=a1[0]/2
+        F2=a2[0]/2
+        for i in range(len(f1)-1):
+            F1=F1+a1[i+1]*cos(OMEGA*(i+1)*t+f1[i+1])
+            F2=F2+a2[i+1]*cos(OMEGA*(i+1)*t+f2[i+1])
+        Y1=[]
+        Y2=[]
+        for i in x:
+            Y1.append(F1.subs(t,i))
+            Y2.append(F2.subs(t,i))            
+        return x,Y1,Y2
+        
+
+            
 
     # Создаёт точки для графика сигнала
     def SignalGraph(self, x):
@@ -161,20 +239,26 @@ class SignalCircuit(cir.Circuit):
         # Первые 2 элемента х и у амплитудного спектра, вторые 2 фазового
         return xf, yf, xp, yp
 
-
+A=10
+Stype=4
+Tau=20
+Period=40
 t = symbols("t", positive=True)
 node_array = [cir.Node(0), cir.Node(1), cir.Node(2), cir.Node(3)]
 node_elem = [cir.Element(0, "I", 1, 1, None, 0, 1), cir.Element(1, "R", 2, None, None, 1, 0),
              cir.Element(2, "L", 2, None, None, 1, 2), cir.Element(3, "R", 1, None, None, 2, 3),
              cir.Element(4, "C", 4, None, None, 3, 0), cir.Element(5, "R", 0.5, None, None, 3, 0)]
-circ = SignalCircuit(node_array, node_elem, 2, 10, 5)
+circ = SignalCircuit(node_array, node_elem, Stype, A, Tau)
 hxy = circ.hth1tGraph(5, 'I', 100, 0.00005)
 fftxy = circ.Fourier()
 sigxy = circ.SignalGraph(hxy[0])
 f2x = sigxy[0]
-f2xy = np.convolve(sigxy[1], hxy[1])
+f2xy = []
+for i in range(len(hxy[1])):
+    f2xy.append(sigxy[1][i]*hxy[2][i])
 f2y = f2xy[0:len(sigxy[0])]
 frq_a = circ.frequency_analysis(hxy[3])
+F1F2=circ.FourierPeriod(Stype,hxy[3],A,Tau,Period)
 
 # Сигнал
 plt.figure(1)
@@ -183,6 +267,7 @@ plt.ylabel('f1(t)')
 plt.title('Signal f1(t)')
 plt.grid()
 plt.plot(sigxy[0], sigxy[1])
+plt.plot(F1F2[0], F1F2[1])
 
 # Амплитуда
 plt.figure(2)
@@ -207,6 +292,7 @@ plt.ylabel('f2(t)')
 plt.title('Reaction f2(t)')
 plt.grid()
 plt.plot(f2x, f2y)
+plt.plot(F1F2[0], F1F2[2])
 
 # h(t)
 plt.figure(5)
@@ -240,4 +326,5 @@ plt.title('ФЧХ')
 plt.grid()
 plt.plot(frq_a[2], frq_a[3])
 plt.show()
+
 pass
