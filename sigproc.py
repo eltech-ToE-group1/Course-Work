@@ -136,8 +136,8 @@ class SignalCircuit(cir.Circuit):
             A_jw=(4*A/t)*sin((Tau/4)*t)*sin((Tau/4)*t)
             F_jw=np.pi/2-(Tau/2)*t
         if (Stype==2):
-            A_jw=(4*A/t)*sin((Tau/4)*t)*sin((Tau/4)*t)
-            F_jw=np.pi/2-(Tau/2)*t
+            A_jw=(-4*A/t*t)*sin((Tau/4)*t)*sin((Tau/4)*t)
+            F_jw=np.pi-(Tau/2)*t
         if (Stype==3):
             A_jw=(4*A/t)*sin((Tau/4)*t)*sin((Tau/4)*t)
             F_jw=np.pi/2-(Tau/2)*t                 
