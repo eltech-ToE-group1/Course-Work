@@ -104,7 +104,7 @@ class SignalCircuit(cir.Circuit):
     def FourierPeriod(self, Stype, H_S, A, Tau,Period = 0, N = 7):
         HS0=0
         HS1=0
-        j=H_S[0].size-1;
+        j=H_S[0].size-1
         for i in H_S[0]:
             num=i
             if i:
@@ -240,7 +240,7 @@ class SignalCircuit(cir.Circuit):
         return xf, yf, xp, yp
 
 A=10
-Stype=4
+Stype=2
 Tau=20
 Period=40
 t = symbols("t", positive=True)
@@ -253,9 +253,7 @@ hxy = circ.hth1tGraph(5, 'I', 100, 0.00005)
 fftxy = circ.Fourier()
 sigxy = circ.SignalGraph(hxy[0])
 f2x = sigxy[0]
-f2xy = []
-for i in range(len(hxy[1])):
-    f2xy.append(sigxy[1][i]*hxy[2][i])
+f2xy = np.convolve(sigxy[1], hxy[1])
 f2y = f2xy[0:len(sigxy[0])]
 frq_a = circ.frequency_analysis(hxy[3])
 F1F2=circ.FourierPeriod(Stype,hxy[3],A,Tau,Period)
@@ -275,7 +273,8 @@ plt.xlabel('Omega')
 plt.ylabel('|A|')
 plt.title('Ampletude spectre')
 plt.grid()
-plt.plot(fftxy[0], fftxy[1])
+fftya = fftxy[1]/10
+plt.plot(fftxy[0], fftya)
 
 # Фаза
 plt.figure(3)
@@ -291,6 +290,7 @@ plt.xlabel('t')
 plt.ylabel('f2(t)')
 plt.title('Reaction f2(t)')
 plt.grid()
+f2y = f2y/5
 plt.plot(f2x, f2y)
 plt.plot(F1F2[0], F1F2[2])
 
