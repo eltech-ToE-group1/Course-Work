@@ -10,28 +10,37 @@ from math import exp,isnan
 # Расчёт значений обратного преобразования лапласа функции f_s, заданной матрично в точках t_z
 def talbot_inverse(f_s, t_z, M = 64):
     k = np.arange(M)
+    # Задаём вектор значений функции дельта
     delta = np.zeros(M, dtype=complex)
     for i in k:
         if i != 0:
             delta[i] = 2*np.pi/5 * i * (np.tan(np.pi/M*i)**(-1)+1.j)
     delta[0] = 2*M/5
+    # Задаём вектор значений функции гамма
     gamma = np.zeros(M, dtype=complex)
     for i in k:
         if i != 0:
             gamma[i] = (1 + 1.j*np.pi/M*i*(1+np.tan(np.pi/M*i)**(-2))-1.j*np.tan(np.pi/M*i)**(-1))*np.exp(delta[i])
     gamma[0] = 0.5*np.exp(delta[0])
+    # Создаём сетки, чтобы избежать использования циклов
     delta_mesh, t_mesh = np.meshgrid(delta, t_z)
     gamma_mesh = np.meshgrid(gamma,t_z)[0]
     points = delta_mesh/t_mesh
+    # Ищем значене f(s) нужных точках
     fun_res_ch = np.zeros(np.shape(points), dtype=complex)
     fun_res_zn = np.zeros(np.shape(points), dtype=complex)
+    # Обходим числитель
     for i in range(len(f_s[0])):
         fun_res_ch = fun_res_ch + (f_s[0][i])*points**(len(f_s[0]) - i)
+    # Обходим знаменатель
     for i in range(len(f_s[1])):
         fun_res_zn = fun_res_zn + (f_s[1][i])*points**(len(f_s[1]) - i)
     fun_res = fun_res_ch/fun_res_zn
+    # Выделяем вещественную часть поэлементного произведения матриц
     sum_ar = np.real(gamma_mesh*fun_res)
+    # Суммируем столбцы
     sum_ar = np.sum(sum_ar, axis = 1)
+    # Получаем значение f(t) в заданных точках
     ilt = 0.4/t_z * sum_ar
     return ilt
 
@@ -79,6 +88,9 @@ class SignalCircuit(cir.Circuit):
             else:
                 f2 = f2.subs(Heaviside(t - i), 1)
             y.append(f2.subs(t, i))
+        # Заполняем нули
+        y = np.append(y, np.zeros(N))
+        N = N*2
         # Заполняем значения амплитудного спектра
         yf = fftshift(fft(y))
         # Заполняем частоты
@@ -148,7 +160,7 @@ class SignalCircuit(cir.Circuit):
         f1=[]
         a2=[]
         f2=[]
-        j=0;
+        j=0
         for i in range(len(xf)):
             a1.append(A_jw.subs(t,xf[i])/(Period/2))
             if (isnan(a1[i])):
@@ -156,7 +168,7 @@ class SignalCircuit(cir.Circuit):
             if (a1[i]<0.00001):
                 a1[i]=0
             if (a1[i]==0):
-                j=0;
+                j=0
             f1.append(F_jw.subs(t,xf[j]))
             a2.append(a1[i]*np.abs(HS.subs(t,xf[i]*1.j)))
             f2.append(f1[i]+np.angle(complex(HS.subs(t,xf[i]*1.j))))
@@ -240,9 +252,9 @@ class SignalCircuit(cir.Circuit):
         return xf, yf, xp, yp
 
 A=10
-Stype=2
+Stype=4
 Tau=20
-Period=40
+Period=Tau*2
 t = symbols("t", positive=True)
 node_array = [cir.Node(0), cir.Node(1), cir.Node(2), cir.Node(3)]
 node_elem = [cir.Element(0, "I", 1, 1, None, 0, 1), cir.Element(1, "R", 2, None, None, 1, 0),
@@ -273,8 +285,7 @@ plt.xlabel('Omega')
 plt.ylabel('|A|')
 plt.title('Ampletude spectre')
 plt.grid()
-fftya = fftxy[1]/10
-plt.plot(fftxy[0], fftya)
+plt.plot(fftxy[0], fftxy[1])
 
 # Фаза
 plt.figure(3)
@@ -290,7 +301,6 @@ plt.xlabel('t')
 plt.ylabel('f2(t)')
 plt.title('Reaction f2(t)')
 plt.grid()
-f2y = f2y/5
 plt.plot(f2x, f2y)
 plt.plot(F1F2[0], F1F2[2])
 
