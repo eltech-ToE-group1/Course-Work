@@ -116,7 +116,7 @@ class SignalCircuit(cir.Circuit):
     def FourierPeriod(self, Stype, H_S, A, Tau,Period = 0, N = 7):
         HS0=0
         HS1=0
-        j=H_S[0].size-1
+        j=H_S[0].size-1;
         for i in H_S[0]:
             num=i
             if i:
@@ -144,36 +144,54 @@ class SignalCircuit(cir.Circuit):
         OMEGA = 2*np.pi/Period
         x = np.linspace(0.0,Period,200)
         xf = np.linspace(0.0,OMEGA*N,N+1)
+        #1-Синус
+        #2-треугольный импульс
+        #3-Косинус
+        #4-прямоугольный импульс
         if (Stype==1):
-            A_jw=(4*A/t)*sin((Tau/4)*t)*sin((Tau/4)*t)
-            F_jw=np.pi/2-(Tau/2)*t
+            A_jw=(2*A*np.pi/(Tau*(-t*t+np.pi*np.pi/(Tau*Tau))))*sin((Tau/2)*t)
+            F_jw=-(Tau/2)*t
         if (Stype==2):
             A_jw=(-8*A/(Tau*t*t))*sin((Tau/4)*t)*sin((Tau/4)*t)
             F_jw=np.pi-(Tau/2)*t
         if (Stype==3):
-            A_jw=(4*A/t)*sin((Tau/4)*t)*sin((Tau/4)*t)
-            F_jw=np.pi/2-(Tau/2)*t                 
+            A_jw=(-2*A*t/(-t*t+np.pi*np.pi/(Tau*Tau)))*sin((Tau/2)*t)
+            F_jw=np.pi/2+(Tau/2)*t
         if (Stype==4):
             A_jw=(4*A/t)*sin((Tau/4)*t)*sin((Tau/4)*t)
             F_jw=np.pi/2-(Tau/2)*t
+        xs=np.linspace(0.0,3,1201)
+        As=[]
+        Fs=[]
+        for i in range(len(xs)):
+            As.append(A_jw.subs(t,xs[i]))
+            if (isnan(abs(complex(As[i]))) or isinf(abs(complex(As[i])))):
+                As[i]=0 
+            if (abs(As[i])<0.01):
+                As[i]=0
+            #print(xs[i],As[i])
+            if (As[i]==0):
+                j=0;
+            Fs.append(F_jw.subs(t,xs[j]))
+            j=j+1
         a1 = []
         f1=[]
         a2=[]
         f2=[]
-        j=0
         for i in range(len(xf)):
             a1.append(A_jw.subs(t,xf[i])/(Period/2))
-            if (isnan(a1[i])):
+            if (isnan(abs(complex(a1[i]))) or isinf(abs(complex(a1[i])))):
                 a1[i]=0 
-            if (a1[i]<0.00001):
+            if (abs(a1[i])<0.00001):
                 a1[i]=0
             if (a1[i]==0):
-                j=0
+                j=0;
             f1.append(F_jw.subs(t,xf[j]))
             a2.append(a1[i]*np.abs(HS.subs(t,xf[i]*1.j)))
             f2.append(f1[i]+np.angle(complex(HS.subs(t,xf[i]*1.j))))
             j=j+1
             # Заполняем значения амплитудного спектра
+        #print(a1)
         F1=a1[0]/2
         F2=a2[0]/2
         for i in range(len(f1)-1):
@@ -184,7 +202,7 @@ class SignalCircuit(cir.Circuit):
         for i in x:
             Y1.append(F1.subs(t,i))
             Y2.append(F2.subs(t,i))            
-        return x,Y1,Y2
+        return x,Y1,Y2,xs,As,Fs
         
 
             
@@ -285,7 +303,7 @@ plt.xlabel('Omega')
 plt.ylabel('|A|')
 plt.title('Ampletude spectre')
 plt.grid()
-plt.plot(fftxy[0], fftxy[1])
+plt.plot(F1F2[3], F1F2[4])
 
 # Фаза
 plt.figure(3)
@@ -293,7 +311,7 @@ plt.xlabel('Omega')
 plt.ylabel('arg(A)')
 plt.title('Phase spectre')
 plt.grid()
-plt.plot(fftxy[2], fftxy[3])
+plt.plot(F1F2[3], F1F2[5])
 
 # Выходной сигнал
 plt.figure(4)
