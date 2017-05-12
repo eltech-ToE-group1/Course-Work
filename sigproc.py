@@ -1,11 +1,23 @@
 import circuit as cir
 from sympy import Heaviside, sin, cos, symbols
-from scipy.fftpack import fft, fftshift, fftfreq
+from scipy.fftpack import fft, fftshift
 from scipy.signal import ss2tf
 import matplotlib.pyplot as plt
 import copy
 import numpy as np
-from math import exp,isnan
+from math import isnan, isinf
+
+
+def convolve_integral(x, y1, y2):
+    delta = x[1] - x[0]
+    y_ret = np.zeros(np.shape(x))
+    for i in range(len(x) - 1):
+        temp_y1 = y1[0:i+1]
+        temp_y2 = y2[0:i+1]
+        temp_y2 = np.flipud(temp_y2)
+        y_int = temp_y1*temp_y2
+        y_ret[i] = np.trapz(y_int, dx=delta)
+    return y_ret
 
 # Расчёт значений обратного преобразования лапласа функции f_s, заданной матрично в точках t_z
 def talbot_inverse(f_s, t_z, M = 64):
@@ -56,12 +68,12 @@ class SignalCircuit(cir.Circuit):
             self.signal = A*(cos(t*np.pi/Tau) - cos(t*np.pi/Tau)*Heaviside(t-Tau))
         if sigtype == 4:
             self.signal = A*(1 - 2*Heaviside(t-Tau/2) + Heaviside(t-Tau))
-        
-        # Сигнал, заданный пользователем
-        if sigtype == 5:
-            self.signal = signal
         # Время сигнала
         self.Tau = Tau
+        # Амплитуда сигнала
+        self.A = A
+        # Тип сигнала
+        self.sigtype = sigtype
 
     def H_s(self,num, type):
         ABCD = cir.Circuit.StateSpace(self, num, type)
@@ -116,7 +128,7 @@ class SignalCircuit(cir.Circuit):
     def FourierPeriod(self, Stype, H_S, A, Tau,Period = 0, N = 7):
         HS0=0
         HS1=0
-        j=H_S[0].size-1;
+        j=H_S[0].size-1
         for i in H_S[0]:
             num=i
             if i:
@@ -164,14 +176,14 @@ class SignalCircuit(cir.Circuit):
         As=[]
         Fs=[]
         for i in range(len(xs)):
-            As.append(A_jw.subs(t,xs[i]))
+            As.append(np.abs(A_jw.subs(t,xs[i])))
             if (isnan(abs(complex(As[i]))) or isinf(abs(complex(As[i])))):
                 As[i]=0 
             if (abs(As[i])<0.01):
                 As[i]=0
             #print(xs[i],As[i])
             if (As[i]==0):
-                j=0;
+                j=0
             Fs.append(F_jw.subs(t,xs[j]))
             j=j+1
         a1 = []
@@ -185,7 +197,7 @@ class SignalCircuit(cir.Circuit):
             if (abs(a1[i])<0.00001):
                 a1[i]=0
             if (a1[i]==0):
-                j=0;
+                j=0
             f1.append(F_jw.subs(t,xf[j]))
             a2.append(a1[i]*np.abs(HS.subs(t,xf[i]*1.j)))
             f2.append(f1[i]+np.angle(complex(HS.subs(t,xf[i]*1.j))))
@@ -283,7 +295,7 @@ hxy = circ.hth1tGraph(5, 'I', 100, 0.00005)
 fftxy = circ.Fourier()
 sigxy = circ.SignalGraph(hxy[0])
 f2x = sigxy[0]
-f2xy = np.convolve(sigxy[1], hxy[1])
+f2xy = convolve_integral(f2x, sigxy[1], hxy[1])
 f2y = f2xy[0:len(sigxy[0])]
 frq_a = circ.frequency_analysis(hxy[3])
 F1F2=circ.FourierPeriod(Stype,hxy[3],A,Tau,Period)
