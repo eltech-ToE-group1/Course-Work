@@ -128,7 +128,7 @@ class SignalCircuit(cir.Circuit):
     def FourierPeriod(self, Stype, H_S, A, Tau,Period = 0, N = 7):
         HS0=0
         HS1=0
-        j=H_S[0].size-1
+        j=H_S[0].size-1;
         for i in H_S[0]:
             num=i
             if i:
@@ -160,50 +160,118 @@ class SignalCircuit(cir.Circuit):
         #2-треугольный импульс
         #3-Косинус
         #4-прямоугольный импульс
-        if (Stype==1):
-            A_jw=(2*A*np.pi/(Tau*(-t*t+np.pi*np.pi/(Tau*Tau))))*sin((Tau/2)*t)
-            F_jw=-(Tau/2)*t
-        if (Stype==2):
-            A_jw=(-8*A/(Tau*t*t))*sin((Tau/4)*t)*sin((Tau/4)*t)
-            F_jw=np.pi-(Tau/2)*t
-        if (Stype==3):
-            A_jw=(-2*A*t/(-t*t+np.pi*np.pi/(Tau*Tau)))*sin((Tau/2)*t)
-            F_jw=np.pi/2+(Tau/2)*t
-        if (Stype==4):
-            A_jw=(4*A/t)*sin((Tau/4)*t)*sin((Tau/4)*t)
-            F_jw=np.pi/2-(Tau/2)*t
-        xs=np.linspace(0.0,3,1201)
         As=[]
         Fs=[]
-        for i in range(len(xs)):
-            As.append(np.abs(A_jw.subs(t,xs[i])))
-            if (isnan(abs(complex(As[i]))) or isinf(abs(complex(As[i])))):
-                As[i]=0 
-            if (abs(As[i])<0.01):
-                As[i]=0
-            #print(xs[i],As[i])
-            if (As[i]==0):
-                j=0
-            Fs.append(F_jw.subs(t,xs[j]))
-            j=j+1
+        xs=np.linspace(0.0,3,1201)
         a1 = []
         f1=[]
         a2=[]
         f2=[]
-        for i in range(len(xf)):
-            a1.append(A_jw.subs(t,xf[i])/(Period/2))
+        if (Stype==1):
+            A_jw=(2*A*np.pi/(Tau*(-t*t+np.pi*np.pi/(Tau*Tau))))*sin((Tau/2)*t)
+            F_jw=-(Tau/2)*t
+            As.append(0)
+            Fs.append(np.pi/2)
+            a1.append(0)
+            f1.append(np.pi/2)
+            a2.append(0)
+            f2.append(f1[0]+np.angle(complex(HS.subs(t,xf[0]*1.j))))
+        if (Stype==2):
+            A_jw=(8*A/(Tau*t*t))*sin((Tau/4)*t)*sin((Tau/4)*t)
+            F_jw=-(Tau/2)*t
+            As.append(A*Tau/2)
+            Fs.append(0)
+            a1.append(A*Tau/Period)
+            f1.append(0)
+            a2.append(a1[0]*np.abs(HS.subs(t,xf[0]*1.j)))
+            f2.append(f1[0]+np.angle(complex(HS.subs(t,xf[0]*1.j))))
+        if (Stype==3):
+            A_jw=(-2*A*t/(-t*t+np.pi*np.pi/(Tau*Tau)))*sin((Tau/2)*t)
+            F_jw=np.pi/2-(Tau/2)*t
+            As.append(0)
+            Fs.append(0)
+            a1.append(0)
+            f1.append(0)
+            a2.append(0)
+            f2.append(f1[0]+np.angle(complex(HS.subs(t,xf[0]*1.j))))
+        if (Stype==4):
+            A_jw=(4*A/t)*sin((Tau/4)*t)*sin((Tau/4)*t)
+            F_jw=np.pi/2-(Tau/2)*t
+            As.append(0)
+            Fs.append(np.pi/2)
+            a1.append(0)
+            f1.append(np.pi/2)
+            a2.append(0)
+            f2.append(f1[0]+np.angle(complex(HS.subs(t,xf[0]*1.j))))
+        temp=A_jw.subs(t,xs[1])
+        sflag=0
+        fflag=0
+        if  (Stype==1 or Stype==3):
+            for i in range(len(xs)):
+                if (xs[i]==np.pi/Tau):
+                    sflag=1
+                    scount=i
+        if  (Stype==1 or Stype==3):
+            for i in range(len(xf)):
+                if (xf[i]==np.pi/Tau):
+                    fflag=1
+                    fcount=i
+        for k in range(len(xs)-1):
+            i=k+1
+            As.append(temp)
+            if (i<len(xs)-1):
+                temp=A_jw.subs(t,xs[i+1])
+            else:
+                temp=0
+            if (isnan(abs(complex(As[i]))) or isinf(abs(complex(As[i])))):
+                As[i]=0 
+            if (abs(As[i])<abs(temp) and abs(As[i])<abs(As[i-1]) ):
+                As[i]=0
+            Fs.append(F_jw.subs(t,xs[i]))
+            if As[i]<0:
+                As[i]=As[i]*(-1)
+                As[i]=As[i]+np.pi
+            if (abs(Fs[i])>2*np.pi):
+                Fs[i]=(abs(Fs[i])/Fs[i])*(abs(Fs[i])%(2*np.pi))
+        temp=A_jw.subs(t,xf[1])/(Period/2)
+        for k in range(len(xf)-1):
+            i=k+1
+            a1.append(temp)
+            if (i<len(xf)-1):
+                temp=A_jw.subs(t,xf[i+1])/(Period/2)
+            else:
+                temp=0
             if (isnan(abs(complex(a1[i]))) or isinf(abs(complex(a1[i])))):
                 a1[i]=0 
-            if (abs(a1[i])<0.00001):
+            if (abs(a1[i])<abs(temp) and abs(a1[i])<abs(a1[i-1]) ):
                 a1[i]=0
-            if (a1[i]==0):
-                j=0
-            f1.append(F_jw.subs(t,xf[j]))
+            f1.append(F_jw.subs(t,xf[i]))
+            if a1[i]<0:
+                a1[i]=a1[i]*(-1)
+            if (abs(f1[i])>2*np.pi):
+                f1[i]=(abs(f1[i])/f1[i])*(abs(f1[i])%(2*np.pi))
             a2.append(a1[i]*np.abs(HS.subs(t,xf[i]*1.j)))
             f2.append(f1[i]+np.angle(complex(HS.subs(t,xf[i]*1.j))))
             j=j+1
             # Заполняем значения амплитудного спектра
-        #print(a1)
+        if (sflag==1):
+            if(Stype==1):
+                As[scount]=A*Tau/4
+                Fs[scount]=-np.pi/2
+            if(Stype==3):
+                As[scount]=A*np.pi*np.pi/4
+                Fs[scount]=0
+        if (fflag==1):
+            if(Stype==1):
+                a1[fcount]=A*Tau/(2*Period)
+                f1[fcount]=-np.pi/2
+                a2[fcount]=a1[fcount]*np.abs(HS.subs(t,xf[fcount]*1.j))
+                f2[fcount]=f1[fcount]+np.angle(complex(HS.subs(t,xf[fcount]*1.j)))
+            if(Stype==3):
+                a1[fcount]=A*np.pi*np.pi/(2*Period)
+                f1[fcount]=0
+                a2[fcount]=a1[fcount]*np.abs(HS.subs(t,xf[fcount]*1.j))
+                f2[fcount]=f1[fcount]+np.angle(complex(HS.subs(t,xf[fcount]*1.j)))
         F1=a1[0]/2
         F2=a2[0]/2
         for i in range(len(f1)-1):
