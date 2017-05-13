@@ -105,10 +105,10 @@ class SignalCircuit(cir.Circuit):
         fi1 = np.zeros(np.shape(omega))
         # Считаем амплитудный и фазовый спектры входного сигнала
         if stype == 1:
-            temp = A*Tau*(np.exp(-Tau*xf*1.j) + 1)/((Tau*xf*1.j)**2 + np.pi**2)
+            temp = A*Tau*np.pi*(np.exp(-Tau*xf*1.j) + 1)/((Tau*xf*1.j)**2 + np.pi**2)
             ya = np.abs(temp)
             yp = np.angle(temp)
-            temp = A * Tau * (np.exp(-Tau* 1.j * omega) + 1) / ((Tau * 1.j * omega) ** 2 + np.pi ** 2)
+            temp = A * Tau * np.pi*(np.exp(-Tau* 1.j * omega) + 1) / ((Tau * 1.j * omega) ** 2 + np.pi ** 2)
             a1 = np.abs(2*temp/Period)
             fi1 = np.angle(temp)
         if stype == 2:
@@ -147,22 +147,28 @@ class SignalCircuit(cir.Circuit):
         fi2 = fi1+fi2
         yf1 = np.zeros(np.shape(x))
         yf2 = np.zeros(np.shape(x))
+        # Проверка, есть ли значения NaN и inf (удалить после отладки)
+        naninf = False
         for i in range(K+1):
             if isnan(a1[i]) or isinf(a1[i]):
                 a1[i] = 0
+                naninf = True
             if isnan(a2[i]) or isinf(a2[i]):
                 a2[i] = 0
+                naninf = True
             if isnan(fi1[i]) or isinf(fi1[i]):
                 fi1[i] = 0
+                naninf = True
             if isnan(fi2[i]) or isinf(fi2[i]):
                 fi2[i] = 0
+                naninf = True
         yf1 = yf1+a1[0]/2
         yf2 = yf2+a2[0]/2
         # Расчитываем f1(t) и f2(t) через частоты и амплитуды
         for i in range(K):
             yf1 = yf1 + a1[i+1]*np.cos(omega[i+1]*x + fi1[i+1])
             yf2 = yf2 + a2[i + 1] * np.cos(omega[i + 1] * x + fi2[i + 1])
-        return xf, ya, yp, x, yf1, yf2
+        return xf, ya, yp, x, yf1, yf2, naninf
 
     """def FourierPeriod(self, Stype, H_S, A, Tau,Period = 0, N = 7):
         HS0=0
@@ -389,9 +395,9 @@ class SignalCircuit(cir.Circuit):
         return xf, yf, xp, yp
 
 A=10
-Stype=4
+Stype=1
 Tau=10
-Period=20
+Period=15
 t = symbols("t", positive=True)
 node_array = [cir.Node(0), cir.Node(1), cir.Node(2), cir.Node(3)]
 node_elem = [cir.Element(0, "I", 1, 1, None, 0, 1), cir.Element(1, "R", 2, None, None, 1, 0),
