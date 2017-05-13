@@ -87,9 +87,12 @@ class SignalCircuit(cir.Circuit):
 
     # N - Количество точек для преобразования фурье
     def Fourier(self, stype, h_s, A, Tau, Period,  K = 7, N = 200):
+        # Удаляем плохие значения хардкодом(чтобы не считать пределы)
+        if (Period / Tau) % 2 == 0:
+            Period = Period + 0.0001 * abs(Period - Tau)
         # Задаём шаг
         T = self.Tau/N
-        xf = np.linspace( 0 , 1.0 / (2.0 * T), N)
+        xf = np.linspace( 0.001 , 1.0 / (2.0 * T), N)
         # аргумент x для значений f1(t) и f2(t)
         x = np.linspace(0, Period, N)
         # Значения k*w0 для разложения входного и выходного сигнала по частотам
@@ -147,30 +150,15 @@ class SignalCircuit(cir.Circuit):
         fi2 = fi1+fi2
         yf1 = np.zeros(np.shape(x))
         yf2 = np.zeros(np.shape(x))
-        # Проверка, есть ли значения NaN и inf (удалить после отладки)
-        naninf = False
-        for i in range(K+1):
-            if isnan(a1[i]) or isinf(a1[i]):
-                a1[i] = 0
-                naninf = True
-            if isnan(a2[i]) or isinf(a2[i]):
-                a2[i] = 0
-                naninf = True
-            if isnan(fi1[i]) or isinf(fi1[i]):
-                fi1[i] = 0
-                naninf = True
-            if isnan(fi2[i]) or isinf(fi2[i]):
-                fi2[i] = 0
-                naninf = True
         yf1 = yf1+a1[0]/2
         yf2 = yf2+a2[0]/2
         # Расчитываем f1(t) и f2(t) через частоты и амплитуды
         for i in range(K):
             yf1 = yf1 + a1[i+1]*np.cos(omega[i+1]*x + fi1[i+1])
             yf2 = yf2 + a2[i + 1] * np.cos(omega[i + 1] * x + fi2[i + 1])
-        return xf, ya, yp, x, yf1, yf2, naninf
+        return xf, ya, yp, x, yf1, yf2
 
-    """def FourierPeriod(self, Stype, H_S, A, Tau,Period = 0, N = 7):
+    def FourierPeriod(self, Stype, H_S, A, Tau,Period = 0, N = 7):
         HS0=0
         HS1=0
         j=H_S[0].size-1;
@@ -327,7 +315,7 @@ class SignalCircuit(cir.Circuit):
         for i in x:
             Y1.append(F1.subs(t,i))
             Y2.append(F2.subs(t,i))            
-        return xs,As,Fs,x,Y1,Y2"""
+        return xs,As,Fs,x,Y1,Y2
         
 
             
@@ -395,14 +383,14 @@ class SignalCircuit(cir.Circuit):
         return xf, yf, xp, yp
 
 A=10
-Stype=1
-Tau=10
-Period=15
+Stype=4
+Tau=20
+Period=40
 t = symbols("t", positive=True)
 node_array = [cir.Node(0), cir.Node(1), cir.Node(2), cir.Node(3)]
-node_elem = [cir.Element(0, "I", 1, 1, None, 0, 1), cir.Element(1, "R", 2, None, None, 1, 0),
-             cir.Element(2, "L", 2, None, None, 1, 2), cir.Element(3, "R", 1, None, None, 2, 3),
-             cir.Element(4, "C", 4, None, None, 3, 0), cir.Element(5, "R", 0.5, None, None, 3, 0)]
+node_elem = [cir.Element(0, "U", 1, None, 1, 0, 1), cir.Element(1, "R", 1, None, None, 1, 3),
+             cir.Element(2, "C", 1, None, None, 3, 0), cir.Element(3, "R", 1, None, None, 3, 2),
+             cir.Element(4, "C", 0.25, None, None, 2, 0), cir.Element(5, "R", 1, None, None, 2, 0)]
 circ = SignalCircuit(node_array, node_elem, Stype, A, Tau)
 hxy = circ.hth1tGraph(5, 'U', 100, 0.00005)
 sigxy = circ.SignalGraph(hxy[0])
