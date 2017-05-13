@@ -1,6 +1,5 @@
 import circuit as cir
 from sympy import Heaviside, sin, cos, symbols
-from scipy.fftpack import fft, fftshift
 from scipy.signal import ss2tf
 import matplotlib.pyplot as plt
 import copy
@@ -86,46 +85,86 @@ class SignalCircuit(cir.Circuit):
         # Возвращает H(s), H1(s)
         return HS, H1S
 
-    # N - Количество точек
-    def Fourier(self, N = 200):
+    # N - Количество точек для преобразования фурье
+    def Fourier(self, stype, h_s, A, Tau, Period,  K = 7, N = 200):
         # Задаём шаг
         T = self.Tau/N
-        x = np.linspace(0.0, N * T, N)
-        y = []
-        f2 = copy.deepcopy(self.signal)
-        # Заполняем массив значений сигнала
-        for i in x:
-            if int(i) == i:
-                f2 = f2.subs(Heaviside(t - int(i)), 1)
-            else:
-                f2 = f2.subs(Heaviside(t - i), 1)
-            y.append(f2.subs(t, i))
-        # Заполняем нули
-        y = np.append(y, np.zeros(N))
-        N = N*2
-        # Заполняем значения амплитудного спектра
-        yf = fftshift(fft(y))
-        # Заполняем частоты
-        xf = np.linspace(-1.0 / (2.0 * T), 1.0 / (2.0 * T), N)
-        yf2 = copy.deepcopy(2.0 / N * yf)
-        # Фильтруем помехи
-        threshold = np.max(np.abs(yf2)) / 10000
-        for i in range(len(yf2)):
-            if abs(yf2[i]) < threshold:
-                yf2[i] = 0
-        xp = []
-        yp = []
-        # Заполняем новые массивы без помех
-        for i in range(len(yf2)):
-            if yf2[i] != 0:
-                xp.append(xf[i])
-                yp.append(yf2[i])
-        yp = np.angle(yp)
-        yf = np.abs(yf)
-        # Первые 2 элемента х и у амплитудного спектра, вторые 2 фазового
-        return xf, yf, xp, yp
-    
-    def FourierPeriod(self, Stype, H_S, A, Tau,Period = 0, N = 7):
+        xf = np.linspace( 0 , 1.0 / (2.0 * T), N)
+        # аргумент x для значений f1(t) и f2(t)
+        x = np.linspace(0, Period, N)
+        # Значения k*w0 для разложения входного и выходного сигнала по частотам
+        omega = np.zeros(K+1)
+        for i in range(K):
+            omega[i+1] = 2*np.pi/Period * (i+1)
+        omega[0] =0.00001
+        # Фазовый и амплитудный спектры
+        yp = np.zeros(np.shape(xf))
+        ya = np.zeros(np.shape(xf))
+        # Фазы и амплитуды для разложения
+        a1 = np.zeros(np.shape(omega))
+        fi1 = np.zeros(np.shape(omega))
+        # Считаем амплитудный и фазовый спектры входного сигнала
+        if stype == 1:
+            temp = A*Tau*(np.exp(-Tau*xf*1.j) + 1)/((Tau*xf*1.j)**2 + np.pi**2)
+            ya = np.abs(temp)
+            yp = np.angle(temp)
+            temp = A * Tau * (np.exp(-Tau* 1.j * omega) + 1) / ((Tau * 1.j * omega) ** 2 + np.pi ** 2)
+            a1 = np.abs(2*temp/Period)
+            fi1 = np.angle(temp)
+        if stype == 2:
+            temp = A*np.exp(-Tau*xf*1.j)*(np.exp(Tau/2*xf*1.j) - 1)**2/(Tau/2*(xf*1.j)**2)
+            ya = np.abs(temp)
+            yp = np.angle(temp)
+            temp = A*np.exp(-Tau*omega*1.j)*(np.exp(Tau/2*omega*1.j) - 1)**2/(Tau/2*(omega*1.j)**2)
+            a1 = np.abs(2*temp/Period)
+            fi1 = np.angle(temp)
+        if stype == 3:
+            temp = A*(Tau**2)*(np.exp(-Tau*xf*1.j) + 1)*xf*1.j/((Tau*xf*1.j)**2 + np.pi**2)
+            ya = np.abs(temp)
+            yp = np.angle(temp)
+            temp = A*(Tau**2)*(np.exp(-Tau*omega*1.j) + 1)*omega*1.j/((Tau*omega*1.j)**2 + np.pi**2)
+            a1 = np.abs(2*temp/Period)
+            fi1 = np.angle(temp)
+        if stype == 4:
+            temp = A*np.exp(-Tau*xf*1.j)*(np.exp((Tau/2)*xf*1.j) - 1)**2/(xf*1.j)
+            ya = np.abs(temp)
+            yp = np.angle(temp)
+            temp = A*np.exp(-Tau*omega*1.j)*(np.exp((Tau/2)*omega*1.j) - 1)**2/(omega*1.j)
+            a1 = np.abs(2*temp/Period)
+            fi1 = np.angle(temp)
+        # Считаем H(jw)
+        fun_res_ch = np.zeros(np.shape(omega), dtype=complex)
+        fun_res_zn = np.zeros(np.shape(omega), dtype=complex)
+        for i in range(len(h_s[0])):
+            fun_res_ch = fun_res_ch + (h_s[0][i]) * (omega*1.j) ** (len(h_s[0]) - i)
+        for i in range(len(h_s[1])):
+            fun_res_zn = fun_res_zn + (h_s[1][i]) * (omega*1.j) ** (len(h_s[1]) - i)
+        y = np.ndarray(shape = np.shape(fun_res_ch), dtype=complex, buffer = fun_res_ch/fun_res_zn)
+        # Расчитываем A2 и Ф2
+        a2 = np.abs(y)
+        fi2 = np.angle(y)
+        a2 = a1*a2
+        fi2 = fi1+fi2
+        yf1 = np.zeros(np.shape(x))
+        yf2 = np.zeros(np.shape(x))
+        for i in range(K+1):
+            if isnan(a1[i]) or isinf(a1[i]):
+                a1[i] = 0
+            if isnan(a2[i]) or isinf(a2[i]):
+                a2[i] = 0
+            if isnan(fi1[i]) or isinf(fi1[i]):
+                fi1[i] = 0
+            if isnan(fi2[i]) or isinf(fi2[i]):
+                fi2[i] = 0
+        yf1 = yf1+a1[0]/2
+        yf2 = yf2+a2[0]/2
+        # Расчитываем f1(t) и f2(t) через частоты и амплитуды
+        for i in range(K):
+            yf1 = yf1 + a1[i+1]*np.cos(omega[i+1]*x + fi1[i+1])
+            yf2 = yf2 + a2[i + 1] * np.cos(omega[i + 1] * x + fi2[i + 1])
+        return xf, ya, yp, x, yf1, yf2
+
+    """def FourierPeriod(self, Stype, H_S, A, Tau,Period = 0, N = 7):
         HS0=0
         HS1=0
         j=H_S[0].size-1;
@@ -282,7 +321,7 @@ class SignalCircuit(cir.Circuit):
         for i in x:
             Y1.append(F1.subs(t,i))
             Y2.append(F2.subs(t,i))            
-        return x,Y1,Y2,xs,As,Fs
+        return xs,As,Fs,x,Y1,Y2"""
         
 
             
@@ -324,9 +363,9 @@ class SignalCircuit(cir.Circuit):
         fun_res_zn = np.zeros(np.shape(xf), dtype=complex)
         # Заполняем массив значений сигнала
         for i in range(len(h_s[0])):
-            fun_res_ch = fun_res_ch + (h_s[0][i]) * (xf*1.j) ** (len(h_s[0]) - i)
+            fun_res_ch = fun_res_ch + (h_s[0][i]) * (xf*1j) ** (len(h_s[0]) - i)
         for i in range(len(h_s[1])):
-            fun_res_zn = fun_res_zn + (h_s[1][i]) * (xf*1.j) ** (len(h_s[1]) - i)
+            fun_res_zn = fun_res_zn + (h_s[1][i]) * (xf*1j) ** (len(h_s[1]) - i)
         # Заполняем значения амплитудного спектра
         y = np.ndarray(shape = np.shape(fun_res_ch), dtype=complex, buffer = fun_res_ch/fun_res_zn)
         # Заполняем частоты
@@ -351,22 +390,21 @@ class SignalCircuit(cir.Circuit):
 
 A=10
 Stype=4
-Tau=20
-Period=Tau*2
+Tau=10
+Period=20
 t = symbols("t", positive=True)
 node_array = [cir.Node(0), cir.Node(1), cir.Node(2), cir.Node(3)]
 node_elem = [cir.Element(0, "I", 1, 1, None, 0, 1), cir.Element(1, "R", 2, None, None, 1, 0),
              cir.Element(2, "L", 2, None, None, 1, 2), cir.Element(3, "R", 1, None, None, 2, 3),
              cir.Element(4, "C", 4, None, None, 3, 0), cir.Element(5, "R", 0.5, None, None, 3, 0)]
 circ = SignalCircuit(node_array, node_elem, Stype, A, Tau)
-hxy = circ.hth1tGraph(5, 'I', 100, 0.00005)
-fftxy = circ.Fourier()
+hxy = circ.hth1tGraph(5, 'U', 100, 0.00005)
 sigxy = circ.SignalGraph(hxy[0])
 f2x = sigxy[0]
-f2xy = convolve_integral(f2x, sigxy[1], hxy[1])
-f2y = f2xy[0:len(sigxy[0])]
+f2y = convolve_integral(f2x, sigxy[1], hxy[1])
 frq_a = circ.frequency_analysis(hxy[3])
-F1F2=circ.FourierPeriod(Stype,hxy[3],A,Tau,Period)
+f1f2 = circ.Fourier(Stype, hxy[3], A,  Tau, Period)
+# f1f2=circ.FourierPeriod(Stype,hxy[3],A,Tau,Period)
 
 # Сигнал
 plt.figure(1)
@@ -375,7 +413,7 @@ plt.ylabel('f1(t)')
 plt.title('Signal f1(t)')
 plt.grid()
 plt.plot(sigxy[0], sigxy[1])
-plt.plot(F1F2[0], F1F2[1])
+plt.plot(f1f2[3],f1f2[4])
 
 # Амплитуда
 plt.figure(2)
@@ -383,7 +421,7 @@ plt.xlabel('Omega')
 plt.ylabel('|A|')
 plt.title('Ampletude spectre')
 plt.grid()
-plt.plot(F1F2[3], F1F2[4])
+plt.plot(f1f2[0], f1f2[1])
 
 # Фаза
 plt.figure(3)
@@ -391,7 +429,7 @@ plt.xlabel('Omega')
 plt.ylabel('arg(A)')
 plt.title('Phase spectre')
 plt.grid()
-plt.plot(F1F2[3], F1F2[5])
+plt.plot(f1f2[0], f1f2[2])
 
 # Выходной сигнал
 plt.figure(4)
@@ -400,7 +438,7 @@ plt.ylabel('f2(t)')
 plt.title('Reaction f2(t)')
 plt.grid()
 plt.plot(f2x, f2y)
-plt.plot(F1F2[0], F1F2[2])
+plt.plot(f1f2[3], f1f2[5])
 
 # h(t)
 plt.figure(5)
