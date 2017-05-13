@@ -156,9 +156,24 @@ class SignalCircuit(cir.Circuit):
         for i in range(K):
             yf1 = yf1 + a1[i+1]*np.cos(omega[i+1]*x + fi1[i+1])
             yf2 = yf2 + a2[i + 1] * np.cos(omega[i + 1] * x + fi2[i + 1])
+        # Чиним фазовый спектр
+        f = 0
+        for i in range(len(yp) - 1):
+            if (f == 1):
+                if (yp[i + 1] < 0):
+                    yp[i + 1] = (abs(yp[i + 1]) / yp[i + 1]) * ((abs(yp[i + 1]) + 2 * np.pi) % (2 * np.pi))
+                else:
+                    yp[i + 1] = yp[i + 1] - 2 * np.pi
+            else:
+                if (yp[i + 1] > yp[i]):
+                    f = 1
+                    if (yp[i + 1] < 0):
+                        yp[i + 1] = (abs(yp[i + 1]) / yp[i + 1]) * ((abs(yp[i + 1]) + 2 * np.pi) % (2 * np.pi))
+                    else:
+                        yp[i + 1] = yp[i + 1] - 2 * np.pi
         return xf, ya, yp, x, yf1, yf2
 
-    def FourierPeriod(self, Stype, H_S, A, Tau,Period = 0, N = 7):
+    """def FourierPeriod(self, Stype, H_S, A, Tau,Period = 0, N = 7):
         HS0=0
         HS1=0
         j=H_S[0].size-1;
@@ -315,7 +330,7 @@ class SignalCircuit(cir.Circuit):
         for i in x:
             Y1.append(F1.subs(t,i))
             Y2.append(F2.subs(t,i))            
-        return xs,As,Fs,x,Y1,Y2
+        return xs,As,Fs,x,Y1,Y2"""
         
 
             
@@ -383,7 +398,7 @@ class SignalCircuit(cir.Circuit):
         return xf, yf, xp, yp
 
 A=10
-Stype=4
+Stype=1
 Tau=20
 Period=40
 t = symbols("t", positive=True)
