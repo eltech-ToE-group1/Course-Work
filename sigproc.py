@@ -210,7 +210,7 @@ class SignalCircuit(cir.Circuit):
     # Создаёт точки для графиков h(t), h1(t) f2(t) для элемента num и типа реакции type
     def hth1tGraph(self, num, type, N = 200, deltay = 0.0001):
         T = self.Tau / N
-        x = np.linspace(deltay, N * T, N)
+        x = np.linspace(deltay, 2*N * T, 2*N)
         hs = self.H_s(num, type)
         h = hs[0]
         h1 = hs[1]
