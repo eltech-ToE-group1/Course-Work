@@ -204,7 +204,7 @@ class SignalCircuit(cir.Circuit):
             yh1 = np.append(yh1, talbot_inverse(h1, temp))
         return x, yh, yh1, h
 
-    def frequency_analysis(self, h_s, N = 100):
+    def frequency_analysis(self, h_s, N = 200):
         # Задаём шаг
         T = self.Tau/N
         xf = np.linspace( 0 , 1.0 / (2.0 * T), N, dtype=complex)
