@@ -171,7 +171,7 @@ class SignalCircuit(cir.Circuit):
                         yp[i + 1] = (abs(yp[i + 1]) / yp[i + 1]) * ((abs(yp[i + 1]) + 2 * np.pi) % (2 * np.pi))
                     else:
                         yp[i + 1] = yp[i + 1] - 2 * np.pi
-        return xf, ya, yp, x, yf1, yf2
+        return xf, ya, yp, x, yf1, yf2, omega, a1, fi1, a2, fi2
 
     """def FourierPeriod(self, Stype, H_S, A, Tau,Period = 0, N = 7):
         HS0=0
@@ -424,19 +424,19 @@ plt.grid()
 plt.plot(sigxy[0], sigxy[1])
 plt.plot(f1f2[3],f1f2[4])
 
-# Амплитуда
+# Амплитуда входного сигнала
 plt.figure(2)
 plt.xlabel('Omega')
 plt.ylabel('|A|')
-plt.title('Ampletude spectre')
+plt.title('Ampletude spectre IN')
 plt.grid()
 plt.plot(f1f2[0], f1f2[1])
 
-# Фаза
+# Фаза входного сигнала
 plt.figure(3)
 plt.xlabel('Omega')
 plt.ylabel('arg(A)')
-plt.title('Phase spectre')
+plt.title('Phase spectre IN')
 plt.grid()
 plt.plot(f1f2[0], f1f2[2])
 
@@ -449,8 +449,24 @@ plt.grid()
 plt.plot(f2x, f2y)
 plt.plot(f1f2[3], f1f2[5])
 
-# h(t)
+# Амплитуда выходного сигнала
 plt.figure(5)
+plt.xlabel('Omega')
+plt.ylabel('|A|')
+plt.title('Ampletude spectre OUT')
+plt.grid()
+plt.plot(f1f2[0], f1f2[1]*frq_a[1])
+
+# Фаза выходного сигнала
+plt.figure(6)
+plt.xlabel('Omega')
+plt.ylabel('arg(A)')
+plt.title('Phase spectre OUT')
+plt.grid()
+plt.plot(f1f2[0], f1f2[2]+frq_a[3])
+
+# h(t)
+plt.figure(7)
 plt.xlabel('t')
 plt.ylabel('h(t)')
 plt.title('h(t)')
@@ -458,7 +474,7 @@ plt.grid()
 plt.plot(hxy[0], hxy[1])
 
 # h1(t)
-plt.figure(6)
+plt.figure(8)
 plt.xlabel('t')
 plt.ylabel('h1(t)')
 plt.title('h1(t)')
@@ -466,7 +482,7 @@ plt.grid()
 plt.plot(hxy[0], hxy[2])
 
 # АЧХ
-plt.figure(7)
+plt.figure(9)
 plt.xlabel('Omega')
 plt.ylabel('|H(jw)|')
 plt.title('АЧХ')
@@ -474,12 +490,48 @@ plt.grid()
 plt.plot(frq_a[0], frq_a[1])
 
 # ФЧХ
-plt.figure(8)
+plt.figure(10)
 plt.xlabel('Omega')
 plt.ylabel('arg(A)')
 plt.title('ФЧХ')
 plt.grid()
 plt.plot(frq_a[2], frq_a[3])
+plt.show()
+
+# Амплитуда Фурье  IN
+plt.figure(10)
+plt.xlabel('Omega')
+plt.ylabel('A')
+plt.title('Ampletude Fourier IN')
+plt.grid()
+plt.stem(f1f2[6], f1f2[7])
+plt.show()
+
+# Фаза Фурье IN
+plt.figure(10)
+plt.xlabel('Omega')
+plt.ylabel('arg(A)')
+plt.title('Phase Fourier IN')
+plt.grid()
+plt.stem(f1f2[6], f1f2[8])
+plt.show()
+
+# Амплитуда Фурье Out
+plt.figure(10)
+plt.xlabel('Omega')
+plt.ylabel('A')
+plt.title('Ampletude Fourier OUT')
+plt.grid()
+plt.stem(f1f2[6], f1f2[9])
+plt.show()
+
+# Фаза Фурье OUT
+plt.figure(10)
+plt.xlabel('Omega')
+plt.ylabel('arg(A)')
+plt.title('Phase Fourier OUT')
+plt.grid()
+plt.stem(f1f2[6], f1f2[10])
 plt.show()
 
 pass
