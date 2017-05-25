@@ -18,6 +18,25 @@ def convolve_integral(x, y1, y2):
         y_ret[i] = np.trapz(y_int, dx=delta)
     return y_ret
 
+
+def delta_omega(x1,ACH,x2,Spectre):
+    H707=ACH[1]*0.707
+    i=1;
+    while(ACH[i]>=H707):
+        i=i+1
+    dx=x1[i-1]
+    dwx=[0,dx,dx+0.00001]
+    dwy=[ACH[i-1],ACH[i-1],0]
+    A01=Spectre[0]*0.1
+    maxi=0
+    for i in range(len(Spectre)):
+        if (Spectre[i]>=A01):
+            maxi=i
+    dx=x1[maxi]
+    dw1x=[0,x2[len(x2)-1]]
+    dw1y=[Spectre[maxi],Spectre[maxi]]
+    return dwx,dwy,dw1x,dw1y
+
 # Расчёт значений обратного преобразования лапласа функции f_s, заданной матрично в точках t_z
 def talbot_inverse(f_s, t_z, M = 64):
     k = np.arange(M)
@@ -83,7 +102,7 @@ class SignalCircuit(cir.Circuit):
         H1S = HStp[0][0], H1S_zn
         HS = HStp[0][0], HStp[1]
         # Возвращает H(s), H1(s)
-        return HS, H1S
+        return HS, H1S,ABCD
 
     # N - Количество точек для преобразования фурье
     def Fourier(self, stype, h_s, A, Tau, Period,  K = 7, N = 200):
@@ -202,7 +221,7 @@ class SignalCircuit(cir.Circuit):
             x = np.append(x,temp)
             yh = np.append(yh, talbot_inverse(h, temp))
             yh1 = np.append(yh1, talbot_inverse(h1, temp))
-        return x, yh, yh1, h
+        return x, yh, yh1, h, hs[2]
 
     def frequency_analysis(self, h_s, N = 200):
         # Задаём шаг
@@ -253,7 +272,13 @@ f2x = sigxy[0]
 f2y = convolve_integral(f2x, sigxy[1], hxy[1])
 frq_a = circ.frequency_analysis(hxy[3])
 f1f2 = circ.Fourier(Stype, hxy[3], A,  Tau, Period)
+delta=delta_omega(frq_a[0], frq_a[1],f1f2[0], f1f2[1])
 # f1f2=circ.FourierPeriod(Stype,hxy[3],A,Tau,Period)
+print('H(S): num ',hxy[3][0],'denum',hxy[3][1])
+print('A:',hxy[4][0])
+print('B:',hxy[4][1])
+print('C:',hxy[4][2])
+print('D:',hxy[4][3])
 
 # Сигнал
 plt.figure(1)
@@ -271,6 +296,12 @@ plt.ylabel('|A|')
 plt.title('Ampletude spectre IN')
 plt.grid()
 plt.plot(f1f2[0], f1f2[1])
+plt.plot(delta[2],delta[3],'r--')
+plt.show()
+
+
+print('dw1=',delta[2][1])
+
 
 # Фаза входного сигнала
 plt.figure(3)
@@ -328,6 +359,10 @@ plt.ylabel('|H(jw)|')
 plt.title('АЧХ')
 plt.grid()
 plt.plot(frq_a[0], frq_a[1])
+plt.plot(delta[0],delta[1],'r--')
+plt.show()
+
+print('dw1=',delta[0][1])
 
 # ФЧХ
 plt.figure(10)
@@ -336,37 +371,37 @@ plt.ylabel('arg(A)')
 plt.title('ФЧХ')
 plt.grid()
 plt.plot(frq_a[2], frq_a[3])
-plt.show()
+
 
 # Амплитуда Фурье  IN
-plt.figure(10)
+plt.figure(11)
 plt.xlabel('Omega')
 plt.ylabel('A')
 plt.title('Ampletude Fourier IN')
 plt.grid()
 plt.stem(f1f2[6], f1f2[7])
-plt.show()
+
 
 # Фаза Фурье IN
-plt.figure(10)
+plt.figure(12)
 plt.xlabel('Omega')
 plt.ylabel('arg(A)')
 plt.title('Phase Fourier IN')
 plt.grid()
 plt.stem(f1f2[6], f1f2[8])
-plt.show()
+
 
 # Амплитуда Фурье Out
-plt.figure(10)
+plt.figure(13)
 plt.xlabel('Omega')
 plt.ylabel('A')
 plt.title('Ampletude Fourier OUT')
 plt.grid()
 plt.stem(f1f2[6], f1f2[9])
-plt.show()
+
 
 # Фаза Фурье OUT
-plt.figure(10)
+plt.figure(14)
 plt.xlabel('Omega')
 plt.ylabel('arg(A)')
 plt.title('Phase Fourier OUT')
