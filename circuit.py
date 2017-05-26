@@ -310,7 +310,7 @@ class Circuit:
                     I[i.amperage.from_this] = I[i.amperage.from_this] - i.amperage.function
             if (i.el_type.find(
                     'U') != -1):  # Если у нас есть ИН, то соответствующию строку в матрице проводимостей переводим в единичную, а соответсвующее значение матрицы токов приравниваем напряжению
-                for j in range(N - 1):
+                for j in range(N):
                     G[i.to_][j] = 0
                     G[i.from_][j] = 0
                 if (i.voltage.plus != Basic):
@@ -539,10 +539,10 @@ class Circuit:
 
 # Зададим цепь
 """node_array = [Node(0), Node(1), Node(2), Node(3)]
-node_elem = [Element(0, "I", 1, 1, None, 0, 1), Element(1, "R", 2, None, None, 1, 0),
-             Element(2, "L", 2, None, None, 1, 2), Element(3, "R", 1, None, None, 2, 3),
-             Element(4, "C", 4, None, None, 3, 0), Element(5, "R", 0.5, None, None, 3, 0)]
+node_elem = [Element(0, "I", 1, 1, None, 0, 1), Element(1, "R", 4, None, None, 1, 0),
+             Element(2, "C", 0.5, None, None, 1, 2), Element(3, "C", 1, None, None, 2, 0),
+             Element(4, "R", 1, None, None, 2, 3), Element(5, "R", 1, None, None, 3, 0)]
 circ = Circuit(node_array, node_elem)
-a = circ.StateSpace(5, 'U')
-HS = ss2tf(a[0], a[1], a[2], a[3])"""
-pass
+a = circ.StateSpace(5, 'I')
+HS = ss2tf(a[0], a[1], a[2], a[3])
+pass"""

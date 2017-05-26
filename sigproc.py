@@ -4,7 +4,6 @@ from scipy.signal import ss2tf
 import matplotlib.pyplot as plt
 import copy
 import numpy as np
-from math import isnan, isinf
 
 
 def convolve_integral(x, y1, y2):
@@ -20,19 +19,18 @@ def convolve_integral(x, y1, y2):
 
 
 def delta_omega(x1,ACH,x2,Spectre):
-    H707=ACH[1]*0.707
-    i=1;
-    while(ACH[i]>=H707):
+    H707=np.max(ACH)*0.707
+    i=np.argmax(ACH)
+    while i<len(ACH) and ACH[i]>=H707:
         i=i+1
     dx=x1[i-1]
     dwx=[0,dx,dx+0.00001]
     dwy=[ACH[i-1],ACH[i-1],0]
-    A01=Spectre[0]*0.1
+    A01=np.max(Spectre)*0.1
     maxi=0
     for i in range(len(Spectre)):
         if (Spectre[i]>=A01):
             maxi=i
-    dx=x1[maxi]
     dw1x=[0,x2[len(x2)-1]]
     dw1y=[Spectre[maxi],Spectre[maxi]]
     return dwx,dwy,dw1x,dw1y
@@ -175,21 +173,6 @@ class SignalCircuit(cir.Circuit):
         for i in range(K):
             yf1 = yf1 + a1[i+1]*np.cos(omega[i+1]*x + fi1[i+1])
             yf2 = yf2 + a2[i + 1] * np.cos(omega[i + 1] * x + fi2[i + 1])
-        # Чиним фазовый спектр
-        f = 0
-        for i in range(len(yp) - 1):
-            if (f == 1):
-                if (yp[i + 1] < 0):
-                    yp[i + 1] = (abs(yp[i + 1]) / yp[i + 1]) * ((abs(yp[i + 1]) + 2 * np.pi) % (2 * np.pi))
-                else:
-                    yp[i + 1] = yp[i + 1] - 2 * np.pi
-            else:
-                if (yp[i + 1] > yp[i]):
-                    f = 1
-                    if (yp[i + 1] < 0):
-                        yp[i + 1] = (abs(yp[i + 1]) / yp[i + 1]) * ((abs(yp[i + 1]) + 2 * np.pi) % (2 * np.pi))
-                    else:
-                        yp[i + 1] = yp[i + 1] - 2 * np.pi
         return xf, ya, yp, x, yf1, yf2, omega, a1, fi1, a2, fi2      
 
             
@@ -226,7 +209,7 @@ class SignalCircuit(cir.Circuit):
     def frequency_analysis(self, h_s, N = 200):
         # Задаём шаг
         T = self.Tau/N
-        xf = np.linspace( 0 , 1.0 / (2.0 * T), N, dtype=complex)
+        xf = np.linspace( 0.000001 , 1.0 / (2.0 * T), N, dtype=complex)
         fun_res_ch = np.zeros(np.shape(xf), dtype=complex)
         fun_res_zn = np.zeros(np.shape(xf), dtype=complex)
         # Заполняем массив значений сигнала
@@ -238,7 +221,7 @@ class SignalCircuit(cir.Circuit):
         y = np.ndarray(shape = np.shape(fun_res_ch), dtype=complex, buffer = fun_res_ch/fun_res_zn)
         # Заполняем частоты
         yf = np.abs(y)
-        yf2 = copy.deepcopy(2.0 / N * y)
+        """yf2 = copy.deepcopy(2.0 / N * y)
         # Фильтруем помехи
         threshold = np.max(np.abs(yf2)) / 10000
         for i in range(len(yf2)):
@@ -250,23 +233,23 @@ class SignalCircuit(cir.Circuit):
         for i in range(len(yf2)):
             if yf2[i] != 0:
                 xp.append(xf[i])
-                yp.append(yf2[i])
-        yp = np.angle(yp)
-        yf = np.abs(yf)
+                yp.append(yf2[i])"""
+        xp = xf
+        yp = np.angle(y)
         # Первые 2 элемента х и у амплитудного спектра, вторые 2 фазового
         return xf, yf, xp, yp
 
-A=10
-Stype=1
-Tau=20
-Period=40
+A=5
+Stype=4
+Tau=2
+Period=4
 t = symbols("t", positive=True)
 node_array = [cir.Node(0), cir.Node(1), cir.Node(2), cir.Node(3)]
-node_elem = [cir.Element(0, "U", 1, None, 1, 0, 1), cir.Element(1, "R", 1, None, None, 1, 3),
-             cir.Element(2, "C", 1, None, None, 3, 0), cir.Element(3, "R", 1, None, None, 3, 2),
-             cir.Element(4, "C", 0.25, None, None, 2, 0), cir.Element(5, "R", 1, None, None, 2, 0)]
+node_elem = [cir.Element(0, "I", 1, 1, None, 0, 1), cir.Element(1, "R", 2, None, None, 1, 0),
+             cir.Element(2, "L", 1, None, None, 1, 2), cir.Element(3, "L", 4, None, None, 2, 0),
+             cir.Element(4, "R", 2, None, None, 2, 3), cir.Element(5, "R", 1, None, None, 3, 0)]
 circ = SignalCircuit(node_array, node_elem, Stype, A, Tau)
-hxy = circ.hth1tGraph(5, 'U', 100, 0.00005)
+hxy = circ.hth1tGraph(5, 'I', 100, 0.00005)
 sigxy = circ.SignalGraph(hxy[0])
 f2x = sigxy[0]
 f2y = convolve_integral(f2x, sigxy[1], hxy[1])
@@ -297,8 +280,6 @@ plt.title('Ampletude spectre IN')
 plt.grid()
 plt.plot(f1f2[0], f1f2[1])
 plt.plot(delta[2],delta[3],'r--')
-plt.show()
-
 
 print('dw1=',delta[2][1])
 
@@ -360,7 +341,6 @@ plt.title('АЧХ')
 plt.grid()
 plt.plot(frq_a[0], frq_a[1])
 plt.plot(delta[0],delta[1],'r--')
-plt.show()
 
 print('dw1=',delta[0][1])
 
